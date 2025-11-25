@@ -71,7 +71,8 @@ client.on("ready", async () => {
 client.on("messageCreate", async message => {
   try {
     await handleMessage(message);
-  } catch {
+  } catch (err) {
+    try { console.error("message handler error", err); } catch {}
   }
 });
 
@@ -82,6 +83,7 @@ client.on("interactionCreate", async interaction => {
   const userId = interaction.user.id;
   if (!guildId) return;
   try {
+    await defaults.ensureDefaults(guildId);
     const name = interaction.commandName;
     const amount = interaction.options.getInteger("amount") ?? 1;
     const traitName = interaction.options.getString("trait") ?? "";
@@ -153,7 +155,8 @@ client.on("interactionCreate", async interaction => {
       await interaction.reply(`${res.emoji} ${res.name}: ${res.amount}`);
       return;
     }
-  } catch {
+  } catch (err) {
+    try { console.error("slash command error", { command: interaction.commandName, err }); } catch {}
     try { await interaction.reply("error"); } catch {}
   }
 });
