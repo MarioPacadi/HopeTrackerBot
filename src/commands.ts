@@ -1,6 +1,7 @@
 import { Message, PermissionFlagsBits } from "discord.js";
 import { env } from "./config.js";
 import { getContainer } from "./di.js";
+import { traitDisplayManager, formatValues } from "./trait-display-manager.js";
 
 const { defaults, userService, traitService, tableService } = getContainer();
 
@@ -22,10 +23,7 @@ function isAdmin(message: Message): boolean {
   return member.permissions.has(PermissionFlagsBits.ManageGuild) || member.permissions.has(PermissionFlagsBits.Administrator);
 }
 
-/** Formats trait values as "[emoji] Name: amount" segments separated by pipes. */
-function formatValues(values: Array<{ emoji: string; name: string; amount: number }>): string {
-  return values.map(v => `${v.emoji} ${v.name}: ${v.amount}`).join(" | ");
-}
+/** Formats trait values into multi-row display with user label in the first column. */
 
 export async function handleMessage(message: Message): Promise<void> {
   if (!message.guild) return;
@@ -41,7 +39,9 @@ export async function handleMessage(message: Message): Promise<void> {
     async register(message) {
       await userService.register(message.author.id, message.guild!.id);
       const vals = await userService.read(message.author.id, message.guild!.id);
-      await message.reply(formatValues(vals));
+      const label = message.member?.displayName ?? message.author.username;
+      const sent = await message.reply(formatValues(label, vals));
+      traitDisplayManager.registerUserMessage(message.guild!.id, message.author.id, sent.channel.id, sent.id);
     },
     async unregister(message) {
       const ok = await userService.unregister(message.author.id, message.guild!.id);
@@ -53,13 +53,15 @@ export async function handleMessage(message: Message): Promise<void> {
         await message.reply("no users in table");
         return;
       }
+      const guild = await message.guild!.fetch();
       const lines: string[] = [];
       for (const r of rows) {
-        const mention = `<@${r.discordUserId}>`;
-        const line = `${mention} | ${formatValues(r.values)}`;
-        lines.push(line);
+        const member = await guild.members.fetch(r.discordUserId).catch(() => null);
+        const label = member?.displayName ?? (await message.client.users.fetch(r.discordUserId)).username;
+        lines.push(formatValues(label, r.values));
       }
-      await message.reply(lines.join("\n"));
+      const sent = await message.reply(lines.join("\n"));
+      traitDisplayManager.registerTableMessage(message.guild!.id, sent.channel.id, sent.id);
     },
     async addusertable(message) {
       if (!isAdmin(message)) {
@@ -127,7 +129,9 @@ export async function handleMessage(message: Message): Promise<void> {
         await message.reply("trait not found");
         return;
       }
-      await message.reply(`${res.emoji} ${res.name}: ${res.amount}`);
+      const label = message.member?.displayName ?? message.author.username;
+      await message.reply(`${label} | ${res.emoji} ${res.name}: ${res.amount}`);
+      await traitDisplayManager.triggerUpdate(message.client, message.guild!.id, message.author.id);
     },
     async clear(message, parts) {
       const p = parseAmount(parts, 1);
@@ -142,7 +146,9 @@ export async function handleMessage(message: Message): Promise<void> {
         await message.reply("trait not found");
         return;
       }
-      await message.reply(`${res.emoji} ${res.name}: ${res.amount}`);
+      const label = message.member?.displayName ?? message.author.username;
+      await message.reply(`${label} | ${res.emoji} ${res.name}: ${res.amount}`);
+      await traitDisplayManager.triggerUpdate(message.client, message.guild!.id, message.author.id);
     },
     async spend(message, parts) {
       const p = parseAmount(parts, 1);
@@ -157,7 +163,9 @@ export async function handleMessage(message: Message): Promise<void> {
         await message.reply("trait not found");
         return;
       }
-      await message.reply(`${res.emoji} ${res.name}: ${res.amount}`);
+      const label = message.member?.displayName ?? message.author.username;
+      await message.reply(`${label} | ${res.emoji} ${res.name}: ${res.amount}`);
+      await traitDisplayManager.triggerUpdate(message.client, message.guild!.id, message.author.id);
     },
     async mark(message, parts) {
       const p = parseAmount(parts, 1);
@@ -172,11 +180,15 @@ export async function handleMessage(message: Message): Promise<void> {
         await message.reply("trait not found");
         return;
       }
-      await message.reply(`${res.emoji} ${res.name}: ${res.amount}`);
+      const label = message.member?.displayName ?? message.author.username;
+      await message.reply(`${label} | ${res.emoji} ${res.name}: ${res.amount}`);
+      await traitDisplayManager.triggerUpdate(message.client, message.guild!.id, message.author.id);
     },
     async values(message) {
       const vals = await userService.read(message.author.id, message.guild!.id);
-      await message.reply(formatValues(vals));
+      const label = message.member?.displayName ?? message.author.username;
+      const sent = await message.reply(formatValues(label, vals));
+      traitDisplayManager.registerUserMessage(message.guild!.id, message.author.id, sent.channel.id, sent.id);
     }
   };
 

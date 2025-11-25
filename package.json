@@ -9,7 +9,7 @@
     "start": "node dist/index.js",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "migrate": "node dist/migrations.js",
-    "test": "node dist/tests/init.test.js"
+    "test": "node dist/tests/init.test.js && node dist/tests/format.test.js"
   },
   "dependencies": {
     "discord.js": "^14.16.3",

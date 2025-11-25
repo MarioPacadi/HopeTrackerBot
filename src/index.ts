@@ -1,6 +1,7 @@
 import { Client, GatewayIntentBits, SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 import { env } from "./config.js";
 import { handleMessage } from "./commands.js";
+import { traitDisplayManager, formatValues } from "./trait-display-manager.js";
 import { ensureDbConnected, ensureSchema } from "./db.js";
 import { startHealthServer } from "./health.js";
 import { getContainer } from "./di.js";
@@ -91,8 +92,12 @@ client.on("interactionCreate", async interaction => {
       await defaults.ensureDefaults(guildId);
       await userService.register(userId, guildId);
       const vals = await userService.read(userId, guildId);
-      const text = vals.map(v => `${v.emoji} ${v.name}: ${v.amount}`).join(" | ");
-      await interaction.reply(text);
+      const member = await interaction.guild!.members.fetch(userId).catch(() => null);
+      const label = member?.displayName ?? interaction.user.username;
+      const text = formatValues(label, vals);
+      await interaction.reply({ content: text });
+      const replyMsg = await interaction.fetchReply();
+      traitDisplayManager.registerUserMessage(guildId, userId, replyMsg.channel.id, replyMsg.id);
       return;
     }
     if (name === "unregister") {
@@ -102,8 +107,12 @@ client.on("interactionCreate", async interaction => {
     }
     if (name === "values") {
       const vals = await userService.read(userId, guildId);
-      const text = vals.map(v => `${v.emoji} ${v.name}: ${v.amount}`).join(" | ");
-      await interaction.reply(text);
+      const member = await interaction.guild!.members.fetch(userId).catch(() => null);
+      const label = member?.displayName ?? interaction.user.username;
+      const text = formatValues(label, vals);
+      await interaction.reply({ content: text });
+      const replyMsg = await interaction.fetchReply();
+      traitDisplayManager.registerUserMessage(guildId, userId, replyMsg.channel.id, replyMsg.id);
       return;
     }
     if (name === "showvalues") {
@@ -113,7 +122,9 @@ client.on("interactionCreate", async interaction => {
         return;
       }
       const lines = rows.map(r => `<@${r.discordUserId}> | ${r.values.map(v => `${v.emoji} ${v.name}: ${v.amount}`).join(" | ")}`);
-      await interaction.reply(lines.join("\n"));
+      await interaction.reply({ content: lines.join("\n") });
+      const replyMsg = await interaction.fetchReply();
+      traitDisplayManager.registerTableMessage(guildId, replyMsg.channel.id, replyMsg.id);
       return;
     }
     if (name === "addusertable") {
@@ -145,14 +156,20 @@ client.on("interactionCreate", async interaction => {
       if (!traitName) { await interaction.reply("usage: /gain trait amount"); return; }
       const res = await userService.modify(userId, guildId, amount, traitName);
       if (!res) { await interaction.reply("trait not found"); return; }
-      await interaction.reply(`${res.emoji} ${res.name}: ${res.amount}`);
+      const member = await interaction.guild!.members.fetch(userId).catch(() => null);
+      const label = member?.displayName ?? interaction.user.username;
+      await interaction.reply(`${label} | ${res.emoji} ${res.name}: ${res.amount}`);
+      await traitDisplayManager.triggerUpdate(interaction.client, guildId, userId);
       return;
     }
     if (name === "spend" || name === "mark") {
       if (!traitName) { await interaction.reply("usage: /spend trait amount"); return; }
       const res = await userService.modify(userId, guildId, -amount, traitName);
       if (!res) { await interaction.reply("trait not found"); return; }
-      await interaction.reply(`${res.emoji} ${res.name}: ${res.amount}`);
+      const member = await interaction.guild!.members.fetch(userId).catch(() => null);
+      const label = member?.displayName ?? interaction.user.username;
+      await interaction.reply(`${label} | ${res.emoji} ${res.name}: ${res.amount}`);
+      await traitDisplayManager.triggerUpdate(interaction.client, guildId, userId);
       return;
     }
   } catch (err) {
