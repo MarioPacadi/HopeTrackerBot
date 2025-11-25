@@ -1,7 +1,7 @@
 import { Client, GatewayIntentBits, SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 import { env } from "./config.js";
 import { handleMessage } from "./commands.js";
-import { ensureDbConnected } from "./db.js";
+import { ensureDbConnected, ensureSchema } from "./db.js";
 import { startHealthServer } from "./health.js";
 import { getContainer } from "./di.js";
 import { readFileSync } from "fs";
@@ -166,6 +166,7 @@ async function start(): Promise<void> {
     throw new Error("missing env");
   }
   await ensureDbConnected();
+  await ensureSchema();
   startHealthServer(Number(process.env.PORT ?? "8080"));
   await client.login(env.DISCORD_TOKEN);
 }

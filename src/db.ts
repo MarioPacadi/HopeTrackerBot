@@ -23,3 +23,14 @@ export async function ensureDbConnected(retries: number = 5, delayMs: number = 1
   }
   throw new Error("database connection failed");
 }
+
+export async function ensureSchema(): Promise<void> {
+  const existsRes = await pool.query("select exists(select 1 from information_schema.tables where table_schema='public' and table_name=$1) as exists", ["guilds"]);
+  const exists = (existsRes.rows[0] as unknown as { exists: boolean }).exists;
+  if (exists) return;
+  const { readFileSync } = await import("fs");
+  const { resolve } = await import("path");
+  const file = resolve(__dirname, "../migrations/0001_init.sql");
+  const sql = readFileSync(file, "utf8");
+  await pool.query(sql);
+}
