@@ -4,9 +4,13 @@ import { env } from "./config.js";
 export const pool: Pool = new Pool({ connectionString: env.DATABASE_URL, ssl: env.DB_SSL ? { rejectUnauthorized: false } : undefined });
 
 export async function query<T>(text: string, params: ReadonlyArray<unknown>): Promise<{ rows: T[] }> {
-  const q = pool.query as unknown as (queryText: string, values: unknown[]) => Promise<{ rows: unknown[] }>;
-  const res = await q(text, params as unknown[]);
-  return { rows: res.rows as T[] };
+  try {
+    const res = await pool.query(text, params as unknown[]);
+    return { rows: res.rows as T[] };
+  } catch (err) {
+    console.error("db query error", { text, err });
+    throw err;
+  }
 }
 
 export async function ensureDbConnected(retries: number = 5, delayMs: number = 1000): Promise<void> {
