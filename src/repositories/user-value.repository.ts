@@ -1,5 +1,5 @@
-import { query } from "../db";
-import { UserValue } from "../models";
+import { query } from "../db.js";
+import { UserValue } from "../models.js";
 
 export class UserValueRepository {
   async get(userId: number, traitId: number): Promise<UserValue | null> {

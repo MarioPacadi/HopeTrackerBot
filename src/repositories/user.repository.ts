@@ -1,5 +1,5 @@
-import { query } from "../db";
-import { User } from "../models";
+import { query } from "../db.js";
+import { User } from "../models.js";
 
 export class UserRepository {
   async findOrCreate(discordUserId: string, guildId: string): Promise<User> {

@@ -1,8 +1,8 @@
-import { UserRepository } from "../repositories/user.repository";
-import { UserValueRepository } from "../repositories/user-value.repository";
-import { TraitRepository } from "../repositories/trait.repository";
-import { Trait } from "../models";
-import { query } from "../db";
+import { UserRepository } from "../repositories/user.repository.js";
+import { UserValueRepository } from "../repositories/user-value.repository.js";
+import { TraitRepository } from "../repositories/trait.repository.js";
+import { Trait } from "../models.js";
+import { query } from "../db.js";
 
 export class UserService {
   private users: UserRepository;

@@ -1,12 +1,12 @@
-import { GuildRepository } from "./repositories/guild.repository";
-import { UserRepository } from "./repositories/user.repository";
-import { TraitRepository } from "./repositories/trait.repository";
-import { UserValueRepository } from "./repositories/user-value.repository";
-import { TableRepository } from "./repositories/table.repository";
-import { DefaultTraitsService } from "./services/default-traits.service";
-import { UserService } from "./services/user.service";
-import { TraitService } from "./services/trait.service";
-import { TableService } from "./services/table.service";
+import { GuildRepository } from "./repositories/guild.repository.js";
+import { UserRepository } from "./repositories/user.repository.js";
+import { TraitRepository } from "./repositories/trait.repository.js";
+import { UserValueRepository } from "./repositories/user-value.repository.js";
+import { TableRepository } from "./repositories/table.repository.js";
+import { DefaultTraitsService } from "./services/default-traits.service.js";
+import { UserService } from "./services/user.service.js";
+import { TraitService } from "./services/trait.service.js";
+import { TableService } from "./services/table.service.js";
 
 class Container {
   readonly guilds = new GuildRepository();

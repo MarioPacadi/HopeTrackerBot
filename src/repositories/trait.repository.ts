@@ -1,5 +1,5 @@
-import { query } from "../db";
-import { Trait } from "../models";
+import { query } from "../db.js";
+import { Trait } from "../models.js";
 
 export class TraitRepository {
   async list(guildId: string): Promise<Trait[]> {

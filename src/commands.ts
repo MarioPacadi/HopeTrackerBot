@@ -1,6 +1,6 @@
 import { Message, PermissionFlagsBits } from "discord.js";
-import { env } from "./config";
-import { getContainer } from "./di";
+import { env } from "./config.js";
+import { getContainer } from "./di.js";
 
 const { defaults, userService, traitService, tableService } = getContainer();
 

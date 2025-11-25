@@ -1,5 +1,5 @@
-import { TraitRepository } from "../repositories/trait.repository";
-import { GuildRepository } from "../repositories/guild.repository";
+import { TraitRepository } from "../repositories/trait.repository.js";
+import { GuildRepository } from "../repositories/guild.repository.js";
 
 export class DefaultTraitsService {
   private traits: TraitRepository;

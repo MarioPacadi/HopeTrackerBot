@@ -1,4 +1,4 @@
-import { pool } from "./db";
+import { pool } from "./db.js";
 import { readFileSync } from "fs";
 import { resolve } from "path";
 

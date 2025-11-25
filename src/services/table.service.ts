@@ -1,8 +1,8 @@
-import { TableRepository } from "../repositories/table.repository";
-import { UserRepository } from "../repositories/user.repository";
-import { UserValueRepository } from "../repositories/user-value.repository";
-import { TraitRepository } from "../repositories/trait.repository";
-import { Trait } from "../models";
+import { TableRepository } from "../repositories/table.repository.js";
+import { UserRepository } from "../repositories/user.repository.js";
+import { UserValueRepository } from "../repositories/user-value.repository.js";
+import { TraitRepository } from "../repositories/trait.repository.js";
+import { Trait } from "../models.js";
 
 export class TableService {
   private tables: TableRepository;

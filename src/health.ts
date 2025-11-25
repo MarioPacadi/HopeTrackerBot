@@ -1,5 +1,5 @@
 import { createServer } from "http";
-import { pool } from "./db";
+import { pool } from "./db.js";
 
 export function startHealthServer(port: number): void {
   const server = createServer(async (req, res) => {

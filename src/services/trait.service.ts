@@ -1,5 +1,5 @@
-import { TraitRepository } from "../repositories/trait.repository";
-import { Trait } from "../models";
+import { TraitRepository } from "../repositories/trait.repository.js";
+import { Trait } from "../models.js";
 
 export class TraitService {
   private repo: TraitRepository;

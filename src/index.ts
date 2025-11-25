@@ -1,8 +1,8 @@
 import { Client, GatewayIntentBits } from "discord.js";
-import { env } from "./config";
-import { handleMessage } from "./commands";
-import { ensureDbConnected } from "./db";
-import { startHealthServer } from "./health";
+import { env } from "./config.js";
+import { handleMessage } from "./commands.js";
+import { ensureDbConnected } from "./db.js";
+import { startHealthServer } from "./health.js";
 import { readFileSync } from "fs";
 import { resolve } from "path";
 import { imageSize } from "image-size";
