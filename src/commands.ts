@@ -40,7 +40,7 @@ export async function handleMessage(message: Message): Promise<void> {
       await userService.register(message.author.id, message.guild!.id);
       const vals = await userService.read(message.author.id, message.guild!.id);
       const label = message.member?.displayName ?? message.author.username;
-      const sent = await message.reply(formatValues(label, vals));
+      const sent = await message.reply(`${label} \n ${formatValues(vals)}`);
       traitDisplayManager.registerUserMessage(message.guild!.id, message.author.id, sent.channel.id, sent.id);
     },
     async unregister(message) {
@@ -58,7 +58,7 @@ export async function handleMessage(message: Message): Promise<void> {
       for (const r of rows) {
         const member = await guild.members.fetch(r.discordUserId).catch(() => null);
         const label = member?.displayName ?? (await message.client.users.fetch(r.discordUserId)).username;
-        lines.push(formatValues(label, r.values));
+        lines.push(`${label} \n ${formatValues(r.values)}`);
       }
       const sent = await message.reply(lines.join("\n"));
       traitDisplayManager.registerTableMessage(message.guild!.id, sent.channel.id, sent.id);
@@ -187,7 +187,7 @@ export async function handleMessage(message: Message): Promise<void> {
     async values(message) {
       const vals = await userService.read(message.author.id, message.guild!.id);
       const label = message.member?.displayName ?? message.author.username;
-      const sent = await message.reply(formatValues(label, vals));
+      const sent = await message.reply(`${label} \n ${formatValues(vals)}`);
       traitDisplayManager.registerUserMessage(message.guild!.id, message.author.id, sent.channel.id, sent.id);
     }
   };
