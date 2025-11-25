@@ -165,10 +165,24 @@ async function start(): Promise<void> {
   if (!env.DISCORD_TOKEN || !env.DATABASE_URL) {
     throw new Error("missing env");
   }
-  await ensureDbConnected();
-  await ensureSchema();
   startHealthServer(Number(process.env.PORT ?? "8080"));
+  let connected = false;
+  for (let i = 0; i < 10; i++) {
+    try {
+      await ensureDbConnected();
+      await ensureSchema();
+      connected = true;
+      break;
+    } catch {
+      await new Promise(r => setTimeout(r, 2000));
+    }
+  }
+  if (!connected) {
+    console.error("startup db initialization failed");
+  }
   await client.login(env.DISCORD_TOKEN);
 }
 
-start().catch(() => process.exit(1));
+start().catch(err => {
+  console.error("startup error", err);
+});
