@@ -94,7 +94,7 @@ client.on("interactionCreate", async interaction => {
       const vals = await userService.read(userId, guildId);
       const member = await interaction.guild!.members.fetch(userId).catch(() => null);
       const label = member?.displayName ?? interaction.user.username;
-      const text = `${label} \n ${formatValues(vals)}`;
+      const text = formatValues(label, vals);
       await interaction.reply({ content: text });
       const replyMsg = await interaction.fetchReply();
       traitDisplayManager.registerUserMessage(guildId, userId, replyMsg.channel.id, replyMsg.id);
@@ -109,7 +109,7 @@ client.on("interactionCreate", async interaction => {
       const vals = await userService.read(userId, guildId);
       const member = await interaction.guild!.members.fetch(userId).catch(() => null);
       const label = member?.displayName ?? interaction.user.username;
-      const text = `${label} \n ${formatValues(vals)}`;
+      const text = formatValues(label, vals);
       await interaction.reply({ content: text });
       const replyMsg = await interaction.fetchReply();
       traitDisplayManager.registerUserMessage(guildId, userId, replyMsg.channel.id, replyMsg.id);

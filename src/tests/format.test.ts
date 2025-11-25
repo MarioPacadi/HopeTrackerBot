@@ -5,17 +5,17 @@ function assertEqual(a: string, b: string): void {
 }
 
 async function run(): Promise<void> {
-  const text = formatValues([
+  const text = formatValues("Alice", [
     { emoji: "🛡️", name: "Armor", amount: 2 },
     { emoji: "🪙", name: "Hope", amount: 3 },
     { emoji: "❤️", name: "Health", amount: 10 },
     { emoji: "🧠", name: "Stress", amount: 1 }
   ]);
   const expected = [
-    "❤️ HP: 10",
-    "🧠 Stress: 1",
-    "🛡️ Armor: 2",
-    "🪙 Hope: 3"  
+    "Alice | ❤️ HP: 10",
+    "Alice | 🧠 Stress: 1",
+    "Alice | 🛡️ Armor: 2",
+    "Alice | 🪙 Hope: 3"
   ].join("\n");
   assertEqual(text, expected);
   process.exit(0);

@@ -1,7 +1,7 @@
 import { Client, TextChannel } from "discord.js";
 import { getContainer } from "./di.js";
 
-export function formatValues(values: Array<{ emoji: string; name: string; amount: number }>): string {
+export function formatValues(userLabel: string, values: Array<{ emoji: string; name: string; amount: number }>): string {
   const order = ["Health", "Stress", "Armor", "Hope"];
   const normalizeLabel = (name: string): string => (name.toLowerCase() === "health" ? "HP" : name);
   const byOrder = new Map(order.map((n, i) => [n.toLowerCase(), i] as const));
@@ -13,8 +13,9 @@ export function formatValues(values: Array<{ emoji: string; name: string; amount
     if (bi != null) return 1;
     return a.name.localeCompare(b.name);
   });
+  const header = `${userLabel}:`;
   const lines = sorted.map(v => `${v.emoji} ${normalizeLabel(v.name)}: ${v.amount}`);
-  return lines.join("\n");
+  return `${header}\n${lines.join("\n")}`;
 }
 
 export class TraitDisplayManager {
@@ -41,7 +42,7 @@ export class TraitDisplayManager {
       const guild = await client.guilds.fetch(guildId);
       const member = await guild.members.fetch(userId).catch(() => null);
       const label = member?.displayName ?? (await client.users.fetch(userId)).username;
-      const text = `${label} \n ${formatValues(vals)}`;
+      const text = formatValues(label, vals);
       for (const r of refs) {
         const channel = (await client.channels.fetch(r.channelId)) as TextChannel;
         const msg = await channel.messages.fetch(r.messageId).catch(() => null);
@@ -62,7 +63,7 @@ export class TraitDisplayManager {
       for (const r of rows) {
         const member = await guild.members.fetch(r.discordUserId).catch(() => null);
         const label = member?.displayName ?? (await client.users.fetch(r.discordUserId)).username;
-        lines.push(`${label} \n ${formatValues(r.values)}`);
+        lines.push(formatValues(label, r.values));
       }
       const text = lines.join("\n");
       for (const r of refs) {
