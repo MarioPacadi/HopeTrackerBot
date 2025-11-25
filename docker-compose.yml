@@ -19,11 +19,7 @@ services:
     build: .
     environment:
       DISCORD_TOKEN: ${DISCORD_TOKEN}
-      DB_HOST: db
-      DB_PORT: 5432
-      DB_USER: ${DB_USER:-bot}
-      DB_PASSWORD: ${DB_PASSWORD:-botpass}
-      DB_NAME: ${DB_NAME:-botdb}
+      DATABASE_URL: postgresql://${DB_USER:-bot}:${DB_PASSWORD:-botpass}@db:${DB_PORT:-5432}/${DB_NAME:-botdb}
       COMMAND_PREFIX: ${COMMAND_PREFIX:-!}
     depends_on:
       db:
