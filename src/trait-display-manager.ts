@@ -21,6 +21,8 @@ export function formatValues(userLabel: string, values: Array<{ emoji: string; n
 export class TraitDisplayManager {
   private userMessages: Map<string, Map<string, Array<{ channelId: string; messageId: string }>>> = new Map();
   private tableMessages: Map<string, Array<{ channelId: string; messageId: string }>> = new Map();
+  private lastTableMessage: Map<string, { channelId: string; messageId: string; userIds: string[] }> = new Map();
+  private updatingTable: Map<string, boolean> = new Map();
   registerUserMessage(guildId: string, userId: string, channelId: string, messageId: string): void {
     if (!this.userMessages.has(guildId)) this.userMessages.set(guildId, new Map());
     const m = this.userMessages.get(guildId)!;
@@ -28,10 +30,13 @@ export class TraitDisplayManager {
     arr.push({ channelId, messageId });
     m.set(userId, arr);
   }
-  registerTableMessage(guildId: string, channelId: string, messageId: string): void {
+  registerTableMessage(guildId: string, channelId: string, messageId: string, userIds?: string[]): void {
     const arr = this.tableMessages.get(guildId) ?? [];
     arr.push({ channelId, messageId });
     this.tableMessages.set(guildId, arr);
+    if (userIds && userIds.length > 0) {
+      this.lastTableMessage.set(guildId, { channelId, messageId, userIds });
+    }
   }
   async refreshUser(client: Client, guildId: string, userId: string): Promise<void> {
     const refs = this.userMessages.get(guildId)?.get(userId);
@@ -75,10 +80,38 @@ export class TraitDisplayManager {
       console.error("refreshTable error", { guildId, err });
     }
   }
+  async refreshLastTableForUser(client: Client, guildId: string, userId: string): Promise<void> {
+    const last = this.lastTableMessage.get(guildId);
+    if (!last) { console.log("skip table update: no last message", { guildId }); return; }
+    if (!last.userIds.includes(userId)) { console.log("skip table update: user not referenced", { guildId, userId }); return; }
+    if (this.updatingTable.get(guildId)) { console.log("skip table update: concurrent update", { guildId }); return; }
+    this.updatingTable.set(guildId, true);
+    try {
+      const { userService } = getContainer();
+      const guild = await client.guilds.fetch(guildId);
+      const lines: string[] = [];
+      for (const id of last.userIds) {
+        const vals = await userService.read(id, guildId);
+        const member = await guild.members.fetch(id).catch(() => null);
+        const label = member?.displayName ?? (await client.users.fetch(id)).username;
+        lines.push(formatValues(label, vals, id));
+      }
+      const text = lines.join("\n");
+      const channel = (await client.channels.fetch(last.channelId)) as TextChannel;
+      const msg = await channel.messages.fetch(last.messageId).catch(() => null);
+      if (!msg) { console.log("skip table update: message missing", { guildId }); return; }
+      await msg.edit(text).catch(err => { console.error("table edit error", { guildId, err }); });
+      console.log("table updated", { guildId, count: last.userIds.length });
+    } catch (err) {
+      console.error("refreshLastTableForUser error", { guildId, userId, err });
+    } finally {
+      this.updatingTable.delete(guildId);
+    }
+  }
   async triggerUpdate(client: Client, guildId: string, userId: string): Promise<void> {
     await Promise.all([
       this.refreshUser(client, guildId, userId),
-      this.refreshTable(client, guildId)
+      this.refreshLastTableForUser(client, guildId, userId)
     ]);
   }
 }

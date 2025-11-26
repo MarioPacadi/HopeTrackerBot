@@ -55,13 +55,15 @@ export async function handleMessage(message: Message): Promise<void> {
       }
       const guild = await message.guild!.fetch();
       const lines: string[] = [];
+      const userIds: string[] = [];
       for (const r of rows) {
         const member = await guild.members.fetch(r.discordUserId).catch(() => null);
         const label = member?.displayName ?? (await message.client.users.fetch(r.discordUserId)).username;
-        lines.push(formatValues(label, r.values));
+        lines.push(formatValues(label, r.values, r.discordUserId));
+        userIds.push(r.discordUserId);
       }
       const sent = await message.reply(lines.join("\n"));
-      traitDisplayManager.registerTableMessage(message.guild!.id, sent.channel.id, sent.id);
+      traitDisplayManager.registerTableMessage(message.guild!.id, sent.channel.id, sent.id, userIds);
     },
     async addusertable(message) {
       if (!isAdmin(message)) {
