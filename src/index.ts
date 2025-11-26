@@ -22,10 +22,15 @@ client.on("ready", async () => {
     await client.user?.setAvatar(data);
   } catch {}
   const commandDefs = [
-    new SlashCommandBuilder().setName("register").setDescription("Register yourself"),
-    new SlashCommandBuilder().setName("unregister").setDescription("Unregister yourself"),
+    new SlashCommandBuilder().setName("register").setDescription("Register user").addUserOption(o => o.setName("user").setDescription("Target user").setRequired(false)),
+    new SlashCommandBuilder().setName("unregister").setDescription("Unregister user").addUserOption(o => o.setName("user").setDescription("Target user").setRequired(false)),
     new SlashCommandBuilder().setName("values").setDescription("Show your values"),
     new SlashCommandBuilder().setName("showvalues").setDescription("Show table users and values"),
+    new SlashCommandBuilder()
+      .setName("update_trait").setDescription("Update a trait")
+      .addStringOption(o => o.setName("trait").setDescription("Trait name").setRequired(true))
+      .addIntegerOption(o => o.setName("amount").setDescription("Amount").setRequired(true))
+      .addUserOption(o => o.setName("user").setDescription("Target user").setRequired(false)),
     new SlashCommandBuilder()
       .setName("addusertable").setDescription("Add user to table")
       .addUserOption(o => o.setName("user").setDescription("User to add").setRequired(true))
@@ -79,30 +84,47 @@ client.on("messageCreate", async message => {
 
 client.on("interactionCreate", async interaction => {
   if (!interaction.isChatInputCommand()) return;
-  const { defaults, userService, traitService, tableService } = getContainer();
+  const { defaults, userService, traitService, tableService, audits } = getContainer();
   const guildId = interaction.guildId;
   const userId = interaction.user.id;
   if (!guildId) return;
+  const isAdminOrGM = async (): Promise<boolean> => {
+    const member = interaction.member;
+    if (!member || !("permissions" in member)) return false;
+    const perms = (member as any).permissions;
+    const hasAdmin = perms.has(PermissionFlagsBits.ManageGuild) || perms.has(PermissionFlagsBits.Administrator);
+    const gmRole = interaction.guild?.roles.cache.find(r => r.name.toLowerCase() === "game master");
+    const hasGM = gmRole ? (interaction.member as any).roles?.cache?.has(gmRole.id) : false;
+    return !!hasAdmin || !!hasGM;
+  };
   try {
     await defaults.ensureDefaults(guildId);
     const name = interaction.commandName;
     const amount = interaction.options.getInteger("amount") ?? 1;
     const traitName = interaction.options.getString("trait") ?? "";
     if (name === "register") {
+      const target = interaction.options.getUser("user");
+      const targetId = target?.id ?? userId;
+      if (target && !(await isAdminOrGM())) { await interaction.reply("permission denied"); return; }
       await defaults.ensureDefaults(guildId);
-      await userService.register(userId, guildId);
+      await userService.register(targetId, guildId);
       const vals = await userService.read(userId, guildId);
       const member = await interaction.guild!.members.fetch(userId).catch(() => null);
       const label = member?.displayName ?? interaction.user.username;
       const text = formatValues(label, vals);
       await interaction.reply({ content: text });
       const replyMsg = await interaction.fetchReply();
-      traitDisplayManager.registerUserMessage(guildId, userId, replyMsg.channel.id, replyMsg.id);
+      traitDisplayManager.registerUserMessage(guildId, targetId, replyMsg.channel.id, replyMsg.id);
+      await audits.log(guildId, userId, targetId, "register");
       return;
     }
     if (name === "unregister") {
-      const ok = await userService.unregister(userId, guildId);
+      const target = interaction.options.getUser("user");
+      const targetId = target?.id ?? userId;
+      if (target && !(await isAdminOrGM())) { await interaction.reply("permission denied"); return; }
+      const ok = await userService.unregister(targetId, guildId);
       await interaction.reply(ok ? "unregistered" : "not registered");
+      if (ok) await audits.log(guildId, userId, targetId, "unregister");
       return;
     }
     if (name === "values") {
@@ -160,6 +182,7 @@ client.on("interactionCreate", async interaction => {
       const label = member?.displayName ?? interaction.user.username;
       await interaction.reply(`${label} | ${res.emoji} ${res.name}: ${res.amount}`);
       await traitDisplayManager.triggerUpdate(interaction.client, guildId, userId);
+      await audits.log(guildId, userId, userId, "gain", res.name, amount);
       return;
     }
     if (name === "spend" || name === "mark") {
@@ -170,6 +193,28 @@ client.on("interactionCreate", async interaction => {
       const label = member?.displayName ?? interaction.user.username;
       await interaction.reply(`${label} | ${res.emoji} ${res.name}: ${res.amount}`);
       await traitDisplayManager.triggerUpdate(interaction.client, guildId, userId);
+      await audits.log(guildId, userId, userId, "spend", res.name, amount);
+      return;
+    }
+    if (name === "update_trait") {
+      if (!traitName) { await interaction.reply("usage: /update_trait trait amount"); return; }
+      const target = interaction.options.getUser("user");
+      const targetId = target?.id ?? userId;
+      if (target && !(await isAdminOrGM())) { await interaction.reply("permission denied"); return; }
+      if (target) {
+        const u = await getContainer().users.getByDiscordId(targetId, guildId);
+        if (!u) { await interaction.reply("user not registered"); return; }
+      }
+      const trait = await traitService.get(guildId, traitName);
+      if (!trait) { await interaction.reply("trait not found"); return; }
+      const delta = amount;
+      const res = await userService.modify(targetId, guildId, delta, traitName);
+      if (!res) { await interaction.reply("trait not found"); return; }
+      const member = await interaction.guild!.members.fetch(targetId).catch(() => null);
+      const label = member?.displayName ?? (target ? target.username : interaction.user.username);
+      await interaction.reply(`${label} | ${res.emoji} ${res.name}: ${res.amount}`);
+      await traitDisplayManager.triggerUpdate(interaction.client, guildId, targetId);
+      await audits.log(guildId, userId, targetId, "update_trait", res.name, amount);
       return;
     }
   } catch (err) {

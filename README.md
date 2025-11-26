@@ -65,8 +65,8 @@ Database migrations:
 Prefix is configurable via `COMMAND_PREFIX` (defaults to `!`). Examples below use `!`.
 
 - `!register` — Register yourself and initialize trait values.
-- `!unregister` — Unregister yourself (removes your user and values).
-- `!values` — Show your current trait values.
+- `!unregister` — Unregister yourself.
+- `!values` — Show your trait values.
 - `!showvalues` — Show table members and their values.
 - `!addusertable @User` — Admin only. Add a user to the values table.
 - `!removeusertable @User` — Admin only. Remove a user from the values table.
@@ -76,6 +76,20 @@ Prefix is configurable via `COMMAND_PREFIX` (defaults to `!`). Examples below us
 - `!clear <amount> <trait>` — Increase your trait value (same behavior as `gain`).
 - `!spend <amount> <trait>` — Decrease your trait value.
 - `!mark <amount> <trait>` — Decrease your trait value (same behavior as `spend`).
+
+Slash commands:
+- `/register [user]` — Registers self; with `user`, requires Admin or Game Master.
+- `/unregister [user]` — Unregisters self; with `user`, requires Admin or Game Master.
+- `/values` — Shows your values using multi-row format with your name in first column.
+- `/showvalues` — Shows table members; each row begins with the user’s name.
+- `/update_trait trait:<name> amount:<int> [user]` — Updates a trait; with `user`, requires Admin or Game Master.
+
+Permission notes:
+- Admin is `Manage Server` or `Administrator` permission.
+- Game Master is a role named exactly `Game Master`.
+
+Audit logging:
+- All registration and trait updates are logged to `audit_logs` with executor, target, action, trait, amount, and timestamp.
 
 Admin permissions:
 - Command checks require the user to have `Manage Server` or `Administrator` in the guild.
@@ -98,4 +112,3 @@ Admin permissions:
 ## Security
 - Do not commit secrets. Keep `DISCORD_TOKEN` and database credentials in environment variables (Render dashboard).
 - Avoid echoing tokens in logs or responses.
-
