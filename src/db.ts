@@ -30,9 +30,11 @@ export async function ensureDbConnected(retries: number = 5, delayMs: number = 1
 
 export async function ensureSchema(): Promise<void> {
   try {
-    const existsRes = await pool.query("select exists(select 1 from information_schema.tables where table_schema='public' and table_name=$1) as exists", ["guilds"]);
-    const exists = (existsRes.rows[0] as unknown as { exists: boolean }).exists;
-    if (exists) return;
+    const existsGuildsRes = await pool.query("select exists(select 1 from information_schema.tables where table_schema='public' and table_name=$1) as exists", ["guilds"]);
+    const existsAuditRes = await pool.query("select exists(select 1 from information_schema.tables where table_schema='public' and table_name=$1) as exists", ["audit_logs"]);
+    const guildsExist = (existsGuildsRes.rows[0] as unknown as { exists: boolean }).exists;
+    const auditExist = (existsAuditRes.rows[0] as unknown as { exists: boolean }).exists;
+    if (guildsExist && auditExist) return;
     const { readFileSync } = await import("fs");
     const { resolve, dirname } = await import("path");
     const { fileURLToPath } = await import("url");
@@ -41,10 +43,10 @@ export async function ensureSchema(): Promise<void> {
     const client = await pool.connect();
     try {
       await client.query("begin");
-      await client.query(sql);
-      const existsAudit = await client.query("select exists(select 1 from information_schema.tables where table_schema='public' and table_name=$1) as exists", ["audit_logs"]);
-      const hasAudit = (existsAudit.rows[0] as unknown as { exists: boolean }).exists;
-      if (!hasAudit) {
+      if (!guildsExist) {
+        await client.query(sql);
+      }
+      if (!auditExist) {
         const file2 = resolve(dirname(fileURLToPath(import.meta.url)), "../migrations/0002_audit.sql");
         const sql2 = readFileSync(file2, "utf8");
         await client.query(sql2);
