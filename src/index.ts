@@ -143,7 +143,13 @@ client.on("interactionCreate", async interaction => {
         await interaction.reply("no users in table");
         return;
       }
-      const lines = rows.map(r => `<@${r.discordUserId}> | ${r.values.map(v => `${v.emoji} ${v.name}: ${v.amount}`).join(" | ")}`);
+      const guild = await interaction.guild!.fetch();
+      const lines: string[] = [];
+      for (const r of rows) {
+        const member = await guild.members.fetch(r.discordUserId).catch(() => null);
+        const label = member?.displayName ?? (await interaction.client.users.fetch(r.discordUserId)).username;
+        lines.push(formatValues(label, r.values, r.discordUserId));
+      }
       await interaction.reply({ content: lines.join("\n") });
       const replyMsg = await interaction.fetchReply();
       traitDisplayManager.registerTableMessage(guildId, replyMsg.channel.id, replyMsg.id);
