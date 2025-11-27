@@ -10,6 +10,8 @@ export interface User {
   id: number;
   discordUserId: string;
   guildId: string;
+  emoji1?: string | null;
+  emoji2?: string | null;
 }
 
 export interface UserValue {
@@ -37,10 +39,14 @@ export class UserEntity implements User {
   id: number;
   discordUserId: string;
   guildId: string;
-  constructor(id: number, discordUserId: string, guildId: string) {
+  emoji1?: string | null;
+  emoji2?: string | null;
+  constructor(id: number, discordUserId: string, guildId: string, emoji1?: string | null, emoji2?: string | null) {
     this.id = id;
     this.discordUserId = discordUserId;
     this.guildId = guildId;
+    this.emoji1 = emoji1 ?? null;
+    this.emoji2 = emoji2 ?? null;
   }
 }
 

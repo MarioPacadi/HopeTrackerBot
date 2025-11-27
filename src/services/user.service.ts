@@ -13,6 +13,13 @@ export class UserService {
     this.values = values;
     this.traits = traits;
   }
+  private isValidEmoji(input: string): boolean {
+    const s = input.trim();
+    if (!s) return false;
+    const chars = Array.from(s);
+    if (chars.length !== 1) return false;
+    return /\p{Extended_Pictographic}/u.test(s);
+  }
   async register(discordUserId: string, guildId: string): Promise<void> {
     const user = await this.users.findOrCreate(discordUserId, guildId);
     const traits = await this.traits.list(guildId);
@@ -46,6 +53,13 @@ export class UserService {
     const trait = await this.traits.getByName(guildId, traitName);
     if (!trait) return false;
     return this.values.delete(user.id, trait.id);
+  }
+  async addUserEmoji(discordUserId: string, guildId: string, emoji: string | null, position: 1 | 2): Promise<{ id: number; discordUserId: string; guildId: string; emoji1?: string | null; emoji2?: string | null } | null> {
+    const user = await this.users.getByDiscordId(discordUserId, guildId);
+    if (!user) return null;
+    if (emoji && !this.isValidEmoji(emoji)) throw new Error("invalid emoji");
+    const updated = await this.users.setEmoji(user.id, position, emoji ?? null);
+    return { id: updated.id, discordUserId: updated.discordUserId, guildId: updated.guildId, emoji1: updated.emoji1 ?? null, emoji2: updated.emoji2 ?? null };
   }
   async read(discordUserId: string, guildId: string): Promise<Array<{ emoji: string; name: string; amount: number }>> {
     const user = await this.users.findOrCreate(discordUserId, guildId);

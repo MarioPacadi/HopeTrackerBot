@@ -116,7 +116,8 @@ client.on("interactionCreate", async interaction => {
       const vals = await userService.read(targetId, guildId);
       const member = await interaction.guild!.members.fetch(targetId).catch(() => null);
       const label = member?.displayName ?? (target ? target.username : interaction.user.username);
-      const text = formatValues(label, vals, targetId);
+      const uRow = await getContainer().users.getByDiscordId(targetId, guildId);
+      const text = formatValues(label, vals, targetId, uRow?.emoji1 ?? null, uRow?.emoji2 ?? null);
       await interaction.reply({ content: text });
       const replyMsg = await interaction.fetchReply();
       traitDisplayManager.registerUserMessage(guildId, targetId, replyMsg.channel.id, replyMsg.id);
@@ -136,7 +137,8 @@ client.on("interactionCreate", async interaction => {
       const vals = await userService.read(userId, guildId);
       const member = await interaction.guild!.members.fetch(userId).catch(() => null);
       const label = member?.displayName ?? interaction.user.username;
-      const text = formatValues(label, vals);
+      const uSelf = await getContainer().users.getByDiscordId(userId, guildId);
+      const text = formatValues(label, vals, userId, uSelf?.emoji1 ?? null, uSelf?.emoji2 ?? null);
       await interaction.reply({ content: text });
       const replyMsg = await interaction.fetchReply();
       traitDisplayManager.registerUserMessage(guildId, userId, replyMsg.channel.id, replyMsg.id);
@@ -149,12 +151,13 @@ client.on("interactionCreate", async interaction => {
         return;
       }
       const guild = await interaction.guild!.fetch();
-      const entries = [] as Array<{ userLabel: string; discordUserId: string; values: Array<{ emoji: string; name: string; amount: number }> }>;
+      const entries = [] as Array<{ userLabel: string; discordUserId: string; emoji1?: string | null; emoji2?: string | null; values: Array<{ emoji: string; name: string; amount: number }> }>;
       const userIds: string[] = [];
       for (const r of rows) {
         const member = await guild.members.fetch(r.discordUserId).catch(() => null);
         const label = member?.displayName ?? (await interaction.client.users.fetch(r.discordUserId)).username;
-        entries.push({ userLabel: label, discordUserId: r.discordUserId, values: r.values });
+        const uRow = await getContainer().users.getByDiscordId(r.discordUserId, guildId);
+        entries.push({ userLabel: label, discordUserId: r.discordUserId, emoji1: uRow?.emoji1 ?? null, emoji2: uRow?.emoji2 ?? null, values: r.values });
         userIds.push(r.discordUserId);
       }
       const text = formatShowValues(entries);

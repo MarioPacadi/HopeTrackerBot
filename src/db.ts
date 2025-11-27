@@ -33,10 +33,14 @@ export async function ensureSchema(): Promise<void> {
     const existsGuildsRes = await pool.query("select exists(select 1 from information_schema.tables where table_schema='public' and table_name=$1) as exists", ["guilds"]);
     const existsAuditRes = await pool.query("select exists(select 1 from information_schema.tables where table_schema='public' and table_name=$1) as exists", ["audit_logs"]);
     const existsLastTableRes = await pool.query("select exists(select 1 from information_schema.tables where table_schema='public' and table_name=$1) as exists", ["last_table_messages"]);
+    const existsUserEmoji1 = await pool.query("select exists(select 1 from information_schema.columns where table_schema='public' and table_name='users' and column_name=$1) as exists", ["emoji1"]);
+    const existsUserEmoji2 = await pool.query("select exists(select 1 from information_schema.columns where table_schema='public' and table_name='users' and column_name=$1) as exists", ["emoji2"]);
     const guildsExist = (existsGuildsRes.rows[0] as unknown as { exists: boolean }).exists;
     const auditExist = (existsAuditRes.rows[0] as unknown as { exists: boolean }).exists;
     const lastTableExist = (existsLastTableRes.rows[0] as unknown as { exists: boolean }).exists;
-    if (guildsExist && auditExist && lastTableExist) return;
+    const userEmoji1Exist = (existsUserEmoji1.rows[0] as unknown as { exists: boolean }).exists;
+    const userEmoji2Exist = (existsUserEmoji2.rows[0] as unknown as { exists: boolean }).exists;
+    if (guildsExist && auditExist && lastTableExist && userEmoji1Exist && userEmoji2Exist) return;
     const { readFileSync } = await import("fs");
     const { resolve, dirname } = await import("path");
     const { fileURLToPath } = await import("url");
@@ -57,6 +61,11 @@ export async function ensureSchema(): Promise<void> {
         const file3 = resolve(dirname(fileURLToPath(import.meta.url)), "../migrations/0003_last_table_messages.sql");
         const sql3 = readFileSync(file3, "utf8");
         await client.query(sql3);
+      }
+      if (!userEmoji1Exist || !userEmoji2Exist) {
+        const file4 = resolve(dirname(fileURLToPath(import.meta.url)), "../migrations/0004_user_emojis.sql");
+        const sql4 = readFileSync(file4, "utf8");
+        await client.query(sql4);
       }
       await client.query("commit");
       console.log("schema initialized");

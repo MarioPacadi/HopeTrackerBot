@@ -1,7 +1,7 @@
 import { Client, TextChannel } from "discord.js";
 import { getContainer } from "./di.js";
 
-export function formatValues(userLabel: string, values: Array<{ emoji: string; name: string; amount: number }>, discordUserId?: string): string {
+export function formatValues(userLabel: string, values: Array<{ emoji: string; name: string; amount: number }>, discordUserId?: string, emoji1?: string | null, emoji2?: string | null): string {
   const order = ["Health", "Stress", "Armor", "Hope"];
   const normalizeLabel = (name: string): string => (name.toLowerCase() === "health" ? "HP" : name);
   const byOrder = new Map(order.map((n, i) => [n.toLowerCase(), i] as const));
@@ -13,9 +13,10 @@ export function formatValues(userLabel: string, values: Array<{ emoji: string; n
     if (bi != null) return 1;
     return a.name.localeCompare(b.name);
   });
-  const title = `**${userLabel}**${discordUserId ? ` (<@${discordUserId}>)` : ""}`;
+  const pre = `${emoji1 ?? ""}${emoji1 ? " " : ""}${emoji2 ?? ""}${emoji2 ? " " : ""}`.trim();
+  const title = `${pre ? pre + " " : ""}**${userLabel}**${discordUserId ? ` (<@${discordUserId}>)` : ""}`;
   const lines = sorted.map(v => `- ${v.emoji} ${normalizeLabel(v.name)}: ${v.amount}`);
-  return `${title}\n${lines.join("\n")}\n`;
+  return `${title}\n${lines.join("\n")}`;
 }
 
 /**
@@ -26,6 +27,8 @@ export function formatValues(userLabel: string, values: Array<{ emoji: string; n
 export interface ShowEntry {
   userLabel: string;
   discordUserId: string;
+  emoji1?: string | null;
+  emoji2?: string | null;
   values: Array<{ emoji: string; name: string; amount: number }>;
 }
 
@@ -40,10 +43,10 @@ export function formatShowValues(entries: ReadonlyArray<ShowEntry>): string {
   const groupsMap = new Map<string, Group>();
   for (const e of entries) {
     const key = makeKey(e.values);
-    const traitNames = Array.from(new Set(e.values.map(v => normName(v.name)).filter(Boolean)));
+    // const traitNames = Array.from(new Set(e.values.map(v => normName(v.name)).filter(Boolean)));
     const g = groupsMap.get(key);
     if (!g) {
-      groupsMap.set(key, { key, traitNames, entries: [e] });
+      groupsMap.set(key, { key, traitNames: [], entries: [e] });
     } else {
       g.entries.push(e);
     }
@@ -57,7 +60,8 @@ export function formatShowValues(entries: ReadonlyArray<ShowEntry>): string {
     // sections.push(header);
     for (let i = 0; i < g.entries.length; i++) {
       const e = g.entries[i];
-      const title = `**${e.userLabel}**${e.discordUserId ? ` (<@${e.discordUserId}>)` : ""}`;
+      const pre = `${e.emoji1 ?? ""}${e.emoji1 ? " " : ""}${e.emoji2 ?? ""}${e.emoji2 ? " " : ""}`.trim();
+      const title = `${pre ? pre + " " : ""}**${e.userLabel}**${e.discordUserId ? ` (<@${e.discordUserId}>)` : ""}`;
       const bullets = e.values.map(v => {
         const emoji = v.emoji ? `${v.emoji} ` : "";
         const name = normName(v.name) || "Unknown";
@@ -97,12 +101,13 @@ export class TraitDisplayManager {
     const refs = this.userMessages.get(guildId)?.get(userId);
     if (!refs || refs.length === 0) return;
     try {
-      const { userService } = getContainer();
+      const { userService, users } = getContainer();
       const vals = await userService.read(userId, guildId);
+      const u = await users.getByDiscordId(userId, guildId);
       const guild = await client.guilds.fetch(guildId);
       const member = await guild.members.fetch(userId).catch(() => null);
       const label = member?.displayName ?? (await client.users.fetch(userId)).username;
-      const text = formatValues(label, vals, userId);
+      const text = formatValues(label, vals, userId, u?.emoji1 ?? null, u?.emoji2 ?? null);
       for (const r of refs) {
         const channel = (await client.channels.fetch(r.channelId)) as TextChannel;
         const msg = await channel.messages.fetch(r.messageId).catch(() => null);
@@ -116,14 +121,15 @@ export class TraitDisplayManager {
     const refs = this.tableMessages.get(guildId);
     if (!refs || refs.length === 0) return;
     try {
-      const { tableService } = getContainer();
+      const { tableService, users } = getContainer();
       const rows = await tableService.table(guildId);
       const guild = await client.guilds.fetch(guildId);
       const lines: string[] = [];
       for (const r of rows) {
         const member = await guild.members.fetch(r.discordUserId).catch(() => null);
+        const u = await users.getByDiscordId(r.discordUserId, guildId);
         const label = member?.displayName ?? (await client.users.fetch(r.discordUserId)).username;
-        lines.push(formatValues(label, r.values, r.discordUserId));
+        lines.push(formatValues(label, r.values, r.discordUserId, u?.emoji1 ?? null, u?.emoji2 ?? null));
       }
       const text = lines.join("\n");
       for (const r of refs) {
@@ -142,14 +148,15 @@ export class TraitDisplayManager {
     if (this.updatingTable.get(guildId)) { console.log("skip table update: concurrent update", { guildId }); return; }
     this.updatingTable.set(guildId, true);
     try {
-      const { userService } = getContainer();
+      const { userService, users } = getContainer();
       const guild = await client.guilds.fetch(guildId);
       const lines: string[] = [];
       for (const id of last.userIds) {
         const vals = await userService.read(id, guildId);
+        const u = await users.getByDiscordId(id, guildId);
         const member = await guild.members.fetch(id).catch(() => null);
         const label = member?.displayName ?? (await client.users.fetch(id)).username;
-        lines.push(formatValues(label, vals, id));
+        lines.push(formatValues(label, vals, id, u?.emoji1 ?? null, u?.emoji2 ?? null));
       }
       const text = lines.join("\n");
       const channel = (await client.channels.fetch(last.channelId)) as TextChannel;

@@ -59,7 +59,8 @@ export async function handleMessage(message: Message): Promise<void> {
       for (const r of rows) {
         const member = await guild.members.fetch(r.discordUserId).catch(() => null);
         const label = member?.displayName ?? (await message.client.users.fetch(r.discordUserId)).username;
-        lines.push(formatValues(label, r.values, r.discordUserId));
+        const uRow = await getContainer().users.getByDiscordId(r.discordUserId, message.guild!.id);
+        lines.push(formatValues(label, r.values, r.discordUserId, uRow?.emoji1 ?? null, uRow?.emoji2 ?? null));
         userIds.push(r.discordUserId);
       }
       const sent = await message.reply(lines.join("\n"));

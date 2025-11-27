@@ -12,13 +12,13 @@ async function run(): Promise<void> {
     { emoji: "🪙", name: "Hope", amount: 3 },
     { emoji: "❤️", name: "Health", amount: 10 },
     { emoji: "🧠", name: "Stress", amount: 1 }
-  ], "123");
+  ], "123", null, null);
   const expected = [
-    "<@123>:",
-    "❤️ HP: 10",
-    "🧠 Stress: 1",
-    "🛡️ Armor: 2",
-    "🪙 Hope: 3"
+    "**Alice** (<@123>)",
+    "- ❤️ HP: 10",
+    "- 🧠 Stress: 1",
+    "- 🛡️ Armor: 2",
+    "- 🪙 Hope: 3"
   ].join("\n");
   console.log(text);
   assertEqual(text, expected);
