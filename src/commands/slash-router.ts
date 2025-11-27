@@ -161,7 +161,7 @@ export class SlashCommandRouter {
         await traitDisplayManager.triggerUpdate(this.interaction.client, guildId, targetId);
         await audits.log(guildId, userId, targetId, "remove_trait", t.name);
       },
-      setUserEmoji: async () => {
+      setuseremoji: async () => {
         const emoji = this.interaction.options.getString("emoji", true);
         const pos = this.interaction.options.getInteger("position", true);
         const target = this.interaction.options.getUser("user") ?? this.interaction.user;
@@ -200,4 +200,3 @@ export async function handleSlashInteraction(interaction: ChatInputCommandIntera
     try { await interaction.reply("error"); } catch {}
   }
 }
-

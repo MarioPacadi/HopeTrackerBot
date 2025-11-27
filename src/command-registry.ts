@@ -47,29 +47,43 @@ const specs: ReadonlyArray<CommandSpec> = [
     { name: "trait", kind: "string", required: true },
     { name: "user", kind: "user", required: true }
   ] },
-  { name: "setUserEmoji", description: "Set user emoji", shared: true, options: [
+  { name: "setuseremoji", description: "Set user emoji", shared: true, options: [
     { name: "emoji", kind: "string", required: true },
     { name: "position", kind: "integer", required: true },
     { name: "user", kind: "user", required: false }
   ] }
 ];
 
+const NAME_REGEX = /^[\p{Ll}\p{Lm}\p{Lo}\p{N}\p{sc=Devanagari}\p{sc=Thai}_-]+$/u;
+function sanitizeName(s: string): string {
+  const lower = s.toLowerCase();
+  return lower.replace(/[^\p{Ll}\p{Lm}\p{Lo}\p{N}_-]/gu, "-");
+}
+function isValidName(s: string): boolean { return NAME_REGEX.test(s); }
+
 export function getSpecs(): ReadonlyArray<CommandSpec> { return specs; }
 export function getSharedCommandNames(): ReadonlyArray<string> { return specs.filter(s => s.shared).map(s => s.name); }
 
 export function buildSlashCommands(): ReadonlyArray<SlashCommandBuilder> {
-  return specs.map(s => {
-    const b = new SlashCommandBuilder().setName(s.name).setDescription(s.description);
-    if (s.permissions === "manage_guild") {
+  const builders: SlashCommandBuilder[] = [];
+  for (const spec of specs) {
+    const safe = sanitizeName(spec.name);
+    if (!isValidName(safe)) {
+      try { console.error("invalid command name", { name: spec.name }); } catch {}
+      continue;
+    }
+    const b = new SlashCommandBuilder().setName(safe).setDescription(spec.description);
+    if (spec.permissions === "manage_guild") {
       b.setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
     }
-    for (const o of s.options ?? []) {
+    for (const o of spec.options ?? []) {
       if (o.kind === "string") b.addStringOption(x => x.setName(o.name).setDescription(cap(o.name)).setRequired(o.required));
       else if (o.kind === "integer") b.addIntegerOption(x => x.setName(o.name).setDescription(cap(o.name)).setRequired(o.required));
       else if (o.kind === "user") b.addUserOption(x => x.setName(o.name).setDescription("Target user").setRequired(o.required));
     }
-    return b;
-  });
+    builders.push(b);
+  }
+  return builders;
 }
 
 export interface ParityReport { missingInText: string[]; missingTextHandlers: string[]; optionMismatch: Array<{ name: string; expected: ReadonlyArray<SlashOptionSpec>; }>; }

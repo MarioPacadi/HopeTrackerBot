@@ -19,7 +19,7 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBit
 /**
  * Registers slash commands and sets avatar on client ready.
  */
-client.on("ready", async () => {
+client.on("clientReady", async () => {
   try {
     const filePath = resolve(__dirname, "./assets/Hope.png");
     const data = readFileSync(filePath);
@@ -37,6 +37,14 @@ client.on("ready", async () => {
       console.log(`failed to set commands for guild ${guild.id}`);
     }
   }
+});
+
+client.on("error", err => {
+  try { console.error("client error", err); } catch {}
+});
+
+process.on("unhandledRejection", err => {
+  try { console.error("unhandled rejection", err); } catch {}
 });
 
 /**
