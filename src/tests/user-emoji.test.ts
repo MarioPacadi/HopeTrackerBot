@@ -8,11 +8,12 @@ async function run(): Promise<void> {
   resetContainer();
   const { defaults, userService, users } = getContainer();
   const guildId = "emoji-guild";
-  const discordUserId = "u-emoji";
+  const discordUserId = `u-emoji-${Date.now()}`;
   await defaults.ensureDefaults(guildId);
   await userService.register(discordUserId, guildId);
   let u = await users.getByDiscordId(discordUserId, guildId);
   assert(!!u, "user missing");
+  console.log("Initial user", u);
   assert(u!.emoji1 == null && u!.emoji2 == null, "initial emojis not null");
   // add to empty positions
   await userService.addUserEmoji(discordUserId, guildId, "🙂", 1);
@@ -41,4 +42,4 @@ async function run(): Promise<void> {
   process.exit(0);
 }
 
-run().catch(() => process.exit(1));
+run().catch(err => { console.error(err); process.exit(1); });

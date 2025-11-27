@@ -112,3 +112,42 @@ Admin permissions:
 ## Security
 - Do not commit secrets. Keep `DISCORD_TOKEN` and database credentials in environment variables (Render dashboard).
 - Avoid echoing tokens in logs or responses.
+## Shared Command Registry
+
+This project centralizes Discord command definitions in `src/command-registry.ts` to eliminate duplication and ensure parity across the slash command registration (`src/index.ts`) and text command handlers (`src/commands.ts`).
+
+- All commands are defined once as specs and transformed into slash builders for registration.
+- Text handlers validate parity against the shared registry at runtime and log discrepancies.
+- Unit tests (`src/tests/command-parity.test.ts`) verify command parity and backward compatibility.
+
+Key exports:
+- `buildSlashCommands()` returns the canonical list of slash builders.
+- `getSharedCommandNames()` lists commands expected to exist in both slash and text handlers.
+- `validateTextParity(names)` reports missing or extra text handlers compared to the shared set.
+
+Benefits:
+- DRY command definitions
+- Consistent names, options, and permissions
+- Easier maintenance and testing
+- Unit tests (`src/tests/command-parity.test.ts`) verify command parity and backward compatibility.
+  - New command: `setUserEmoji` (slash) and `!setuseremoji` (text)
+    - Slash: `/setUserEmoji emoji:<char> position:<1|2> [user]`
+    - Text: `!setuseremoji <1|2> <emoji> [@user]`
+    - Admin required to set for another user; users can set their own.
+    - Validates single emoji; stores in persistent `users.emoji1/emoji2`.
+## Command Architecture
+
+Files:
+- `src/command-registry.ts` — Central specs and builders for slash commands.
+- `src/commands/utils.ts` — Shared helpers: DI services, amount parsing, admin checks.
+- `src/commands/text-router.ts` — Text command router and entry point `handleMessage(...)`.
+- `src/commands/slash-router.ts` — Slash command router and entry point `handleSlashInteraction(...)`.
+- `src/commands.ts` — Barrel that re-exports the two entry points to preserve imports.
+
+Tests:
+- `src/tests/router-exports.test.ts` — Ensures command entry points remain exported.
+- Existing tests continue to run unchanged.
+
+Usage:
+- Index wires Discord events and calls `handleMessage` and `handleSlashInteraction`.
+- Registry drives slash command definitions; parity checks validate text handlers.
