@@ -49,12 +49,12 @@ export function formatShowValues(entries: ReadonlyArray<ShowEntry>): string {
     }
   }
   const groups = Array.from(groupsMap.values());
-  groups.sort((a, b) => {
-    const ca = a.traitNames.length;
-    const cb = b.traitNames.length;
-    if (ca !== cb) return ca - cb;
-    return a.key.localeCompare(b.key);
-  });
+  // groups.sort((a, b) => {
+  //   const ca = a.traitNames.length;
+  //   const cb = b.traitNames.length;
+  //   if (ca !== cb) return ca - cb;
+  //   return a.key.localeCompare(b.key);
+  // });
   const sections: string[] = [];
   for (const g of groups) {
     const header = `Traits: ${g.traitNames.length > 0 ? g.traitNames.join(", ") : "(none)"}`;
@@ -65,7 +65,7 @@ export function formatShowValues(entries: ReadonlyArray<ShowEntry>): string {
       const bullets = e.values.map(v => {
         const emoji = v.emoji ? `${v.emoji} ` : "";
         const name = normName(v.name) || "Unknown";
-        return `- ${emoji} ${name}: _${v.amount}_`;
+        return `- ${emoji} ${name}: ${v.amount}`;
       });
       sections.push(title);
       sections.push(...bullets);
