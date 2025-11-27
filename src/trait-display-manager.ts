@@ -13,8 +13,8 @@ export function formatValues(userLabel: string, values: Array<{ emoji: string; n
     if (bi != null) return 1;
     return a.name.localeCompare(b.name);
   });
-  const header = discordUserId ? `<@${discordUserId}>:` : `${userLabel}:`;
-  const lines = sorted.map(v => `${v.emoji} ${normalizeLabel(v.name)}: ${v.amount}`);
+  const header = discordUserId ? `**${userLabel}** (<@${discordUserId}>)` : `${userLabel}:`;
+  const lines = sorted.map(v => `- ${v.emoji} ${normalizeLabel(v.name)}: ${v.amount}`);
   return `${header}\n${lines.join("\n")}\n`;
 }
 
@@ -40,7 +40,7 @@ export function formatShowValues(entries: ReadonlyArray<ShowEntry>): string {
   const groupsMap = new Map<string, Group>();
   for (const e of entries) {
     const key = makeKey(e.values);
-    const traitNames = Array.from(new Set(e.values.map(v => normName(v.name)).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+    const traitNames = Array.from(new Set(e.values.map(v => normName(v.name)).filter(Boolean)));
     const g = groupsMap.get(key);
     if (!g) {
       groupsMap.set(key, { key, traitNames, entries: [e] });
@@ -49,12 +49,7 @@ export function formatShowValues(entries: ReadonlyArray<ShowEntry>): string {
     }
   }
   const groups = Array.from(groupsMap.values());
-  // groups.sort((a, b) => {
-  //   const ca = a.traitNames.length;
-  //   const cb = b.traitNames.length;
-  //   if (ca !== cb) return ca - cb;
-  //   return a.key.localeCompare(b.key);
-  // });
+
   const sections: string[] = [];
   for (const g of groups) {
     const header = `Traits: ${g.traitNames.length > 0 ? g.traitNames.join(", ") : "(none)"}`;
