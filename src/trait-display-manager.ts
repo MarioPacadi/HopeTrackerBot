@@ -13,9 +13,9 @@ export function formatValues(userLabel: string, values: Array<{ emoji: string; n
     if (bi != null) return 1;
     return a.name.localeCompare(b.name);
   });
-  const header = discordUserId ? `**${userLabel}** (<@${discordUserId}>)` : `${userLabel}:`;
+  const title = `**${userLabel}**${discordUserId ? ` (<@${discordUserId}>)` : ""}`;
   const lines = sorted.map(v => `- ${v.emoji} ${normalizeLabel(v.name)}: ${v.amount}`);
-  return `${header}\n${lines.join("\n")}\n`;
+  return `${title}\n${lines.join("\n")}\n`;
 }
 
 /**
@@ -33,7 +33,7 @@ export function formatShowValues(entries: ReadonlyArray<ShowEntry>): string {
   if (!entries || entries.length === 0) return "";
   const normName = (n: string): string => (n?.trim() ?? "");
   const makeKey = (vals: ReadonlyArray<{ name: string }>): string => {
-    const names = vals.map(v => normName(v.name)).filter(Boolean).map(s => s.toLowerCase()).sort();
+    const names = vals.map(v => normName(v.name)).filter(Boolean).map(s => s.toLowerCase());
     return names.join("|");
   };
   type Group = { key: string; traitNames: string[]; entries: ShowEntry[] };
@@ -51,9 +51,10 @@ export function formatShowValues(entries: ReadonlyArray<ShowEntry>): string {
   const groups = Array.from(groupsMap.values());
 
   const sections: string[] = [];
+  sections.push("## Traits of all registered Members");
   for (const g of groups) {
-    const header = `Traits: ${g.traitNames.length > 0 ? g.traitNames.join(", ") : "(none)"}`;
-    sections.push(header);
+    // const header = `Traits: ${g.traitNames.length > 0 ? g.traitNames.join(", ") : "(none)"}`;
+    // sections.push(header);
     for (let i = 0; i < g.entries.length; i++) {
       const e = g.entries[i];
       const title = `**${e.userLabel}**${e.discordUserId ? ` (<@${e.discordUserId}>)` : ""}`;
