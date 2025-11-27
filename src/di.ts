@@ -8,6 +8,7 @@ import { UserService } from "./services/user.service.js";
 import { TraitService } from "./services/trait.service.js";
 import { TableService } from "./services/table.service.js";
 import { AuditRepository } from "./repositories/audit.repository.js";
+import { LastTableMessageRepository } from "./repositories/last-table-message.repository.js";
 
 class Container {
   readonly guilds = new GuildRepository();
@@ -16,6 +17,7 @@ class Container {
   readonly userValues = new UserValueRepository();
   readonly tables = new TableRepository();
   readonly audits = new AuditRepository();
+  readonly lastTable = new LastTableMessageRepository();
 
   readonly defaults = new DefaultTraitsService(this.traits, this.guilds);
   readonly userService = new UserService(this.users, this.userValues, this.traits);

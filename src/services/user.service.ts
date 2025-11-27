@@ -33,6 +33,20 @@ export class UserService {
     const uv = await this.values.modify(user.id, trait.id, amount);
     return { emoji: trait.emoji, name: trait.name, amount: uv.amount };
   }
+  async setExact(discordUserId: string, guildId: string, traitName: string, amount: number): Promise<{ emoji: string; name: string; amount: number } | null> {
+    const user = await this.users.findOrCreate(discordUserId, guildId);
+    const trait = await this.traits.getByName(guildId, traitName);
+    if (!trait) return null;
+    const uv = await this.values.set(user.id, trait.id, amount);
+    return { emoji: trait.emoji, name: trait.name, amount: uv.amount };
+  }
+  async removeTraitValue(discordUserId: string, guildId: string, traitName: string): Promise<boolean> {
+    const user = await this.users.getByDiscordId(discordUserId, guildId);
+    if (!user) return false;
+    const trait = await this.traits.getByName(guildId, traitName);
+    if (!trait) return false;
+    return this.values.delete(user.id, trait.id);
+  }
   async read(discordUserId: string, guildId: string): Promise<Array<{ emoji: string; name: string; amount: number }>> {
     const user = await this.users.findOrCreate(discordUserId, guildId);
     const values = await this.values.listForUser(user.id);

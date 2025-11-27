@@ -33,4 +33,12 @@ export class UserValueRepository {
     );
     return res.rows;
   }
+
+  async delete(userId: number, traitId: number): Promise<boolean> {
+    const res = await query<{ ok: number }>(
+      "delete from user_values where user_id=$1 and trait_id=$2 returning 1 as ok",
+      [userId, traitId]
+    );
+    return res.rows.length > 0;
+  }
 }

@@ -32,9 +32,11 @@ export async function ensureSchema(): Promise<void> {
   try {
     const existsGuildsRes = await pool.query("select exists(select 1 from information_schema.tables where table_schema='public' and table_name=$1) as exists", ["guilds"]);
     const existsAuditRes = await pool.query("select exists(select 1 from information_schema.tables where table_schema='public' and table_name=$1) as exists", ["audit_logs"]);
+    const existsLastTableRes = await pool.query("select exists(select 1 from information_schema.tables where table_schema='public' and table_name=$1) as exists", ["last_table_messages"]);
     const guildsExist = (existsGuildsRes.rows[0] as unknown as { exists: boolean }).exists;
     const auditExist = (existsAuditRes.rows[0] as unknown as { exists: boolean }).exists;
-    if (guildsExist && auditExist) return;
+    const lastTableExist = (existsLastTableRes.rows[0] as unknown as { exists: boolean }).exists;
+    if (guildsExist && auditExist && lastTableExist) return;
     const { readFileSync } = await import("fs");
     const { resolve, dirname } = await import("path");
     const { fileURLToPath } = await import("url");
@@ -50,6 +52,11 @@ export async function ensureSchema(): Promise<void> {
         const file2 = resolve(dirname(fileURLToPath(import.meta.url)), "../migrations/0002_audit.sql");
         const sql2 = readFileSync(file2, "utf8");
         await client.query(sql2);
+      }
+      if (!lastTableExist) {
+        const file3 = resolve(dirname(fileURLToPath(import.meta.url)), "../migrations/0003_last_table_messages.sql");
+        const sql3 = readFileSync(file3, "utf8");
+        await client.query(sql3);
       }
       await client.query("commit");
       console.log("schema initialized");

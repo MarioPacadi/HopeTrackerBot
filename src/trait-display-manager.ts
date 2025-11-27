@@ -15,7 +15,7 @@ export function formatValues(userLabel: string, values: Array<{ emoji: string; n
   });
   const header = discordUserId ? `<@${discordUserId}>:` : `${userLabel}:`;
   const lines = sorted.map(v => `${v.emoji} ${normalizeLabel(v.name)}: ${v.amount}`);
-  return `${header}\n${lines.join("\n")}`;
+  return `${header}\n${lines.join("\n")}\n`;
 }
 
 export class TraitDisplayManager {
@@ -36,6 +36,7 @@ export class TraitDisplayManager {
     this.tableMessages.set(guildId, arr);
     if (userIds && userIds.length > 0) {
       this.lastTableMessage.set(guildId, { channelId, messageId, userIds });
+      getContainer().lastTable.set(guildId, channelId, messageId, userIds).catch(() => {});
     }
   }
   async refreshUser(client: Client, guildId: string, userId: string): Promise<void> {
@@ -113,6 +114,17 @@ export class TraitDisplayManager {
       this.refreshUser(client, guildId, userId),
       this.refreshLastTableForUser(client, guildId, userId)
     ]);
+  }
+
+  async loadFromStorage(): Promise<void> {
+    try {
+      const rows = await getContainer().lastTable.listAll();
+      for (const r of rows) {
+        this.lastTableMessage.set(r.guildId, { channelId: r.channelId, messageId: r.messageId, userIds: r.userIds });
+      }
+    } catch (err) {
+      console.error("load last table message error", err);
+    }
   }
 }
 

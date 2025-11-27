@@ -64,6 +64,11 @@ client.on("ready", async () => {
       .setName("clear").setDescription("Increase a trait")
       .addStringOption(o => o.setName("trait").setDescription("Trait name").setRequired(true))
       .addIntegerOption(o => o.setName("amount").setDescription("Amount").setRequired(false))
+    , new SlashCommandBuilder()
+      .setName("remove_trait").setDescription("Remove a user's trait value")
+      .addStringOption(o => o.setName("trait").setDescription("Trait name").setRequired(true))
+      .addUserOption(o => o.setName("user").setDescription("Target user").setRequired(true))
+      .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
   ].map(c => c.toJSON());
   for (const guild of client.guilds.cache.values()) {
     try {
@@ -108,10 +113,10 @@ client.on("interactionCreate", async interaction => {
       if (target && !(await isAdminOrGM())) { await interaction.reply("permission denied"); return; }
       await defaults.ensureDefaults(guildId);
       await userService.register(targetId, guildId);
-      const vals = await userService.read(userId, guildId);
-      const member = await interaction.guild!.members.fetch(userId).catch(() => null);
-      const label = member?.displayName ?? interaction.user.username;
-      const text = formatValues(label, vals);
+      const vals = await userService.read(targetId, guildId);
+      const member = await interaction.guild!.members.fetch(targetId).catch(() => null);
+      const label = member?.displayName ?? (target ? target.username : interaction.user.username);
+      const text = formatValues(label, vals, targetId);
       await interaction.reply({ content: text });
       const replyMsg = await interaction.fetchReply();
       traitDisplayManager.registerUserMessage(guildId, targetId, replyMsg.channel.id, replyMsg.id);
@@ -215,14 +220,31 @@ client.on("interactionCreate", async interaction => {
       }
       const trait = await traitService.get(guildId, traitName);
       if (!trait) { await interaction.reply("trait not found"); return; }
-      const delta = amount;
-      const res = await userService.modify(targetId, guildId, delta, traitName);
+      const res = target ? await userService.setExact(targetId, guildId, traitName, amount) : await userService.modify(targetId, guildId, amount, traitName);
       if (!res) { await interaction.reply("trait not found"); return; }
       const member = await interaction.guild!.members.fetch(targetId).catch(() => null);
       const label = member?.displayName ?? (target ? target.username : interaction.user.username);
       await interaction.reply(`${label} | ${res.emoji} ${res.name}: ${res.amount}`);
       await traitDisplayManager.triggerUpdate(interaction.client, guildId, targetId);
       await audits.log(guildId, userId, targetId, "update_trait", res.name, amount);
+      return;
+    }
+    if (name === "remove_trait") {
+      const target = interaction.options.getUser("user", true);
+      const targetId = target.id;
+      if (!isAdminOrGM()) { await interaction.reply("permission denied"); return; }
+      const u = await getContainer().users.getByDiscordId(targetId, guildId);
+      if (!u) { await interaction.reply("user not registered"); return; }
+      const tname = interaction.options.getString("trait", true);
+      const t = await traitService.get(guildId, tname);
+      if (!t) { await interaction.reply("trait not found"); return; }
+      const ok = await userService.removeTraitValue(targetId, guildId, tname);
+      if (!ok) { await interaction.reply("trait value not found"); return; }
+      const member = await interaction.guild!.members.fetch(targetId).catch(() => null);
+      const label = member?.displayName ?? target.username;
+      await interaction.reply(`removed ${t.name} for ${label}`);
+      await traitDisplayManager.triggerUpdate(interaction.client, guildId, targetId);
+      await audits.log(guildId, userId, targetId, "remove_trait", t.name);
       return;
     }
   } catch (err) {
@@ -250,6 +272,7 @@ async function start(): Promise<void> {
   if (!connected) {
     console.error("startup db initialization failed");
   }
+  await traitDisplayManager.loadFromStorage();
   await client.login(env.DISCORD_TOKEN);
 }
 

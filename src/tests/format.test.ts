@@ -18,7 +18,9 @@ async function run(): Promise<void> {
     "🛡️ Armor: 2",
     "🪙 Hope: 3"
   ].join("\n");
-  assertEqual(text, expected);
+  // debug output
+  console.log(text);
+  assertEqual(text, expected+"\n");
   process.exit(0);
 }
 
