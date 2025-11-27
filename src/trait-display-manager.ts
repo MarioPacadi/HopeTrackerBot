@@ -18,6 +18,64 @@ export function formatValues(userLabel: string, values: Array<{ emoji: string; n
   return `${header}\n${lines.join("\n")}\n`;
 }
 
+/**
+ * Formats multiple user entries for the showvalues command into grouped sections.
+ * Groups by unique trait-name sets, orders sections by trait count ascending then 
+ * lexicographic key, and preserves original entry order within sections.
+ */
+export interface ShowEntry {
+  userLabel: string;
+  discordUserId: string;
+  values: Array<{ emoji: string; name: string; amount: number }>;
+}
+
+export function formatShowValues(entries: ReadonlyArray<ShowEntry>): string {
+  if (!entries || entries.length === 0) return "";
+  const normName = (n: string): string => (n?.trim() ?? "");
+  const makeKey = (vals: ReadonlyArray<{ name: string }>): string => {
+    const names = vals.map(v => normName(v.name)).filter(Boolean).map(s => s.toLowerCase()).sort();
+    return names.join("|");
+  };
+  type Group = { key: string; traitNames: string[]; entries: ShowEntry[] };
+  const groupsMap = new Map<string, Group>();
+  for (const e of entries) {
+    const key = makeKey(e.values);
+    const traitNames = Array.from(new Set(e.values.map(v => normName(v.name)).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+    const g = groupsMap.get(key);
+    if (!g) {
+      groupsMap.set(key, { key, traitNames, entries: [e] });
+    } else {
+      g.entries.push(e);
+    }
+  }
+  const groups = Array.from(groupsMap.values());
+  groups.sort((a, b) => {
+    const ca = a.traitNames.length;
+    const cb = b.traitNames.length;
+    if (ca !== cb) return ca - cb;
+    return a.key.localeCompare(b.key);
+  });
+  const sections: string[] = [];
+  for (const g of groups) {
+    const header = `Traits: ${g.traitNames.length > 0 ? g.traitNames.join(", ") : "(none)"}`;
+    sections.push(header);
+    for (let i = 0; i < g.entries.length; i++) {
+      const e = g.entries[i];
+      const title = `**${e.userLabel}**${e.discordUserId ? ` (<@${e.discordUserId}>)` : ""}`;
+      const bullets = e.values.map(v => {
+        const emoji = v.emoji ? `${v.emoji} ` : "";
+        const name = normName(v.name) || "Unknown";
+        return `- ${emoji} ${name}: _${v.amount}_`;
+      });
+      sections.push(title);
+      sections.push(...bullets);
+      if (i < g.entries.length - 1) sections.push("");
+    }
+    sections.push("");
+  }
+  return sections.join("\n").trim();
+}
+
 export class TraitDisplayManager {
   private userMessages: Map<string, Map<string, Array<{ channelId: string; messageId: string }>>> = new Map();
   private tableMessages: Map<string, Array<{ channelId: string; messageId: string }>> = new Map();

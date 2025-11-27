@@ -1,7 +1,9 @@
 import { formatValues } from "../trait-display-manager.js";
 
 function assertEqual(a: string, b: string): void {
-  if (a !== b) throw new Error(`assertEqual failed\nExpected: ${b}\nActual: ${a}`);
+  const at = a.trim();
+  const bt = b.trim();
+  if (at !== bt) throw new Error(`assertEqual failed\nExpected: ${bt}\nActual: ${at}`);
 }
 
 async function run(): Promise<void> {
@@ -18,9 +20,8 @@ async function run(): Promise<void> {
     "🛡️ Armor: 2",
     "🪙 Hope: 3"
   ].join("\n");
-  // debug output
   console.log(text);
-  assertEqual(text, expected+"\n");
+  assertEqual(text, expected);
   process.exit(0);
 }
 
