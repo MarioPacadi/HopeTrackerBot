@@ -6,7 +6,6 @@ import { handleSlashInteraction } from "./commands.js";
 import { buildSlashCommands } from "./command-registry.js";
 import { ensureDbConnected, ensureSchema } from "./db.js";
 import { startHealthServer } from "./health.js";
-import { getContainer } from "./di.js";
 import { readFileSync } from "fs";
 import { resolve } from "path";
 import { imageSize } from "image-size";

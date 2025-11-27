@@ -14,9 +14,9 @@ export function formatValues(userLabel: string, values: Array<{ emoji: string; n
     return a.name.localeCompare(b.name);
   });
   const pre = `${emoji1 ?? ""}${emoji1 ? " " : ""}${emoji2 ?? ""}${emoji2 ? " " : ""}`.trim();
-  const title = `${pre ? pre + " " : ""}**${userLabel}**${discordUserId ? ` (<@${discordUserId}>)` : ""}`;
+  const title = `**${userLabel}**${discordUserId ? `${pre ? pre + " " : " "}(<@${discordUserId}>)` : ""}`;
   const lines = sorted.map(v => `- ${v.emoji} ${normalizeLabel(v.name)}: ${v.amount}`);
-  return `${title}\n${lines.join("\n")}`;
+  return `${title}\n${lines.join("\n")}\n`;
 }
 
 /**
@@ -61,8 +61,18 @@ export function formatShowValues(entries: ReadonlyArray<ShowEntry>): string {
     for (let i = 0; i < g.entries.length; i++) {
       const e = g.entries[i];
       const pre = `${e.emoji1 ?? ""}${e.emoji1 ? " " : ""}${e.emoji2 ?? ""}${e.emoji2 ? " " : ""}`.trim();
-      const title = `${pre ? pre + " " : ""}**${e.userLabel}**${e.discordUserId ? ` (<@${e.discordUserId}>)` : ""}`;
-      const bullets = e.values.map(v => {
+      const title = `**${e.userLabel}**${e.discordUserId ? `${pre ? pre + " " : " "}(<@${e.discordUserId}>)` : ""}`;
+      const order = ["Health", "Stress", "Armor", "Hope"];
+      const byOrder = new Map(order.map((n, i) => [n.toLowerCase(), i] as const));
+      const sorted = [...e.values].sort((a, b) => {
+        const ai = byOrder.get(a.name.toLowerCase());
+        const bi = byOrder.get(b.name.toLowerCase());
+        if (ai != null && bi != null) return ai - bi;
+        if (ai != null) return -1;
+        if (bi != null) return 1;
+        return a.name.localeCompare(b.name);
+      });
+      const bullets = sorted.map(v => {
         const emoji = v.emoji ? `${v.emoji} ` : "";
         const name = normName(v.name) || "Unknown";
         return `- ${emoji} ${name}: ${v.amount}`;
@@ -151,6 +161,7 @@ export class TraitDisplayManager {
       const { userService, users } = getContainer();
       const guild = await client.guilds.fetch(guildId);
       const lines: string[] = [];
+      lines.push("## Traits of all registered Members \n");
       for (const id of last.userIds) {
         const vals = await userService.read(id, guildId);
         const u = await users.getByDiscordId(id, guildId);
