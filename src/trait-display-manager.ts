@@ -54,10 +54,8 @@ export function formatShowValues(entries: ReadonlyArray<ShowEntry>): string {
   const groups = Array.from(groupsMap.values());
 
   const sections: string[] = [];
-  sections.push("## Traits of all registered Members");
+  sections.push("## Traits of all registered Members\n");
   for (const g of groups) {
-    // const header = `Traits: ${g.traitNames.length > 0 ? g.traitNames.join(", ") : "(none)"}`;
-    // sections.push(header);
     for (let i = 0; i < g.entries.length; i++) {
       const e = g.entries[i];
       const pre = `${e.emoji1 ?? ""}${e.emoji1 ? " " : ""}${e.emoji2 ?? ""}${e.emoji2 ? " " : ""}`.trim();
@@ -161,7 +159,7 @@ export class TraitDisplayManager {
       const { userService, users } = getContainer();
       const guild = await client.guilds.fetch(guildId);
       const lines: string[] = [];
-      lines.push("## Traits of all registered Members \n");
+      lines.push("## Traits of all registered Members\n");
       for (const id of last.userIds) {
         const vals = await userService.read(id, guildId);
         const u = await users.getByDiscordId(id, guildId);

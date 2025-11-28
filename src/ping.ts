@@ -11,6 +11,11 @@ export interface PingConfig {
   timeoutMs: number;
   logLevel: LogLevel;
   criticalFailureThreshold: number;
+  timeZone?: string;
+  persist?: boolean;
+  storage?: StorageLike;
+  now?: () => Date;
+  randomProvider?: () => number;
 }
 
 export interface PingResult {
@@ -35,6 +40,12 @@ export interface HealthStats {
 
 export interface Notifier {
   notifyCritical(message: string, stats: HealthStats): Promise<void>;
+}
+
+export interface StorageLike {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+  removeItem(key: string): void;
 }
 
 class Logger {
@@ -123,6 +134,8 @@ export class PingService {
   private running: boolean;
   private nextTickAt?: number;
   private stopped: boolean;
+  private first: boolean;
+  private storage: StorageLike;
 
   constructor(config: PingConfig, notifier?: Notifier) {
     this.config = config;
@@ -132,6 +145,8 @@ export class PingService {
     this.notifier = notifier;
     this.running = false;
     this.stopped = true;
+    this.first = true;
+    this.storage = config.storage ?? createDefaultStorage();
   }
 
   start(): void {
@@ -140,6 +155,7 @@ export class PingService {
     const now = Date.now();
     this.nextTickAt = now; // trigger an immediate first ping, then align subsequently
     this.logger.info("ping service started", { url: this.config.url, intervalMs: this.config.intervalMs, timeoutMs: this.config.timeoutMs });
+    if (this.config.persist) this.storage.setItem(PING_ENABLED_KEY, "1");
     // kick off first tick immediately
     void this.tick();
   }
@@ -147,6 +163,7 @@ export class PingService {
   stop(): void {
     this.stopped = true;
     this.logger.info("ping service stopped");
+    if (this.config.persist) this.storage.removeItem(PING_ENABLED_KEY);
   }
 
   stats(): HealthStats { return this.monitor.snapshot(); }
@@ -166,9 +183,11 @@ export class PingService {
 
   private async tick(): Promise<void> {
     if (this.stopped) return;
+    if (this.shouldStopByTime()) { this.stop(); return; }
     const planned = this.nextTickAt ?? Date.now();
-    // plan next aligned tick immediately to avoid drift
-    this.nextTickAt = planned + this.config.intervalMs;
+    const nextMs = this.first ? this.config.intervalMs : computeRandomIntervalMs(10, 15, this.config.randomProvider);
+    this.first = false;
+    this.nextTickAt = planned + nextMs;
     if (this.running) {
       this.monitor.incrementSkippedOverlap();
       this.logger.debug("skipping tick due to overlap");
@@ -176,17 +195,24 @@ export class PingService {
       return;
     }
     this.running = true;
-    const startedAt = new Date();
+    const startedAt = (this.config.now ?? (() => new Date()))();
     const res = await this.pinger.ping(this.config.url, this.config.timeoutMs);
     this.monitor.record(res);
     const stats = this.monitor.snapshot();
-    const logPayload = { ts: startedAt.toISOString(), status: res.statusCode ?? null, ms: res.responseTimeMs, ok: res.ok, err: res.errorMessage ?? null };
+    const logPayload = { ts: startedAt.toISOString(), status: res.statusCode ?? "None", ms: res.responseTimeMs, ok: res.ok, err: res.errorMessage ?? "None" };
     if (res.ok) this.logger.info("ping ok", logPayload); else this.logger.error("ping error", logPayload);
     if (stats.consecutiveFailures >= this.config.criticalFailureThreshold && this.notifier) {
       try { await this.notifier.notifyCritical("consecutive failures", stats); } catch {}
     }
     this.running = false;
     this.scheduleNext();
+  }
+
+  private shouldStopByTime(): boolean {
+    const tz = this.config.timeZone ?? getSystemTimeZone();
+    const now = (this.config.now ?? (() => new Date()))();
+    const { hour } = getHourMinute(now, tz);
+    return hour >= 2;
   }
 }
 
@@ -198,11 +224,56 @@ export function makeDefaultPingConfigFromEnv(): PingConfig | null {
   const levelRaw = (process.env.PING_LOG_LEVEL ?? "normal") as LogLevel;
   const level: LogLevel = levelRaw === "none" || levelRaw === "debug" ? levelRaw : "normal";
   const threshold = Number(process.env.PING_CRITICAL_FAILURES ?? "3");
+  const timeZone = process.env.PING_TIMEZONE;
+  const persist = (process.env.PING_PERSIST ?? "false") === "true";
   return {
     url,
     intervalMs: Math.max(1, Math.round(intervalMinutes * 60_000)),
     timeoutMs: Math.max(1, Math.round(timeoutSeconds * 1_000)),
     logLevel: level,
-    criticalFailureThreshold: Math.max(1, threshold)
+    criticalFailureThreshold: Math.max(1, threshold),
+    timeZone,
+    persist
   };
+}
+
+export function computeRandomIntervalMs(minMinutes: number, maxMinutesExclusive: number, rnd?: () => number): number {
+  const minMs = Math.max(0, Math.round(minMinutes * 60_000));
+  const maxMs = Math.max(minMs + 1, Math.round(maxMinutesExclusive * 60_000));
+  const r = Math.min(0.999999999, Math.max(0, (rnd ?? Math.random)()));
+  const span = maxMs - minMs;
+  return minMs + Math.floor(r * span);
+}
+
+function getSystemTimeZone(): string | undefined {
+  try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return undefined; }
+}
+
+function getHourMinute(d: Date, timeZone?: string): { hour: number; minute: number } {
+  const fmt = new Intl.DateTimeFormat("en-US", { timeZone, hour12: false, hour: "2-digit", minute: "2-digit" });
+  const s = fmt.format(d); // e.g., "02:05"
+  const [hh, mm] = s.split(":");
+  const hour = Number(hh);
+  const minute = Number(mm);
+  return { hour: Number.isNaN(hour) ? d.getHours() : hour, minute: Number.isNaN(minute) ? d.getMinutes() : minute };
+}
+
+const PING_ENABLED_KEY = "ping.enabled";
+
+function createDefaultStorage(): StorageLike {
+  const ls: unknown = (globalThis as unknown as { localStorage?: StorageLike }).localStorage;
+  if (ls && typeof (ls as StorageLike).getItem === "function") return ls as StorageLike;
+  // fallback in Node: in-memory storage
+  const map = new Map<string, string>();
+  return {
+    getItem: (key: string): string | null => map.get(key) ?? null,
+    setItem: (key: string, value: string): void => { map.set(key, value); },
+    removeItem: (key: string): void => { map.delete(key); }
+  };
+}
+
+export function shouldAutoRestart(storage?: StorageLike): boolean {
+  const s = storage ?? createDefaultStorage();
+  const v = s.getItem(PING_ENABLED_KEY);
+  return v === "1";
 }

@@ -18,7 +18,7 @@ export function startHealthServer(port: number): void {
           "<style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;background:#0f172a;color:#e2e8f0;margin:0;padding:2rem}main{max-width:760px;margin:0 auto}h1{margin:0 0 1rem;font-size:1.75rem}p{margin:.5rem 0}code{background:#1f2937;padding:.2rem .4rem;border-radius:.25rem}a{color:#93c5fd}img{max-width:100%;height:auto;margin:1rem 0}</style>" +
           "</head><body><main>" +
           "<h1>Hope Tracker Bot</h1>" +
-          "<img src=\"./assets/Hope.png\" alt=\"Hope\"/>" +
+          "<img src=\"https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fstatic.wixstatic.com%2Fmedia%2Fbe39ef_b575ceb932e9489398289a2237f9c654~mv2.gif&f=1&nofb=1&ipt=806d0f6b4cb6b8145c9127328e8cb0cae8711863b1a0ae263c127fa395d91fae\" alt=\"Hope\"/>" +
           "<p>Bot web service is running.</p>" +
           (dbOk ? "<p>Database: <span style=\"color:#22c55e\">ok</span></p>" : "<p>Database: <span style=\"color:#ef4444\">error</span></p>") +
           "<p>Health check: <a href=\"/healthz\">/healthz</a></p>" +
