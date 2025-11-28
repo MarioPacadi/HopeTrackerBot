@@ -1,7 +1,7 @@
 import { Client, GatewayIntentBits, SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 import { env } from "./config.js";
 import { handleMessage } from "./commands.js";
-import { traitDisplayManager, formatValues, formatShowValues } from "./trait-display-manager.js";
+import { traitDisplayManager } from "./trait-display-manager.js";
 import { handleSlashInteraction } from "./commands.js";
 import { buildSlashCommands } from "./command-registry.js";
 import { ensureDbConnected, ensureSchema } from "./db.js";
@@ -9,6 +9,7 @@ import { startHealthServer } from "./health.js";
 import { readFileSync } from "fs";
 import { resolve } from "path";
 import { imageSize } from "image-size";
+import { PingService, makeDefaultPingConfigFromEnv } from "./ping.js";
 
 /**
  * Discord client setup and lifecycle orchestration.
@@ -78,6 +79,11 @@ async function start(): Promise<void> {
     throw new Error("missing env");
   }
   startHealthServer(Number(process.env.PORT ?? "8080"));
+  const cfg = makeDefaultPingConfigFromEnv();
+  if (cfg) {
+    const service = new PingService(cfg);
+    service.start();
+  }
   let connected = false;
   for (let i = 0; i < 10; i++) {
     try {
