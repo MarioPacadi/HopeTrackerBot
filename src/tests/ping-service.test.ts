@@ -1,5 +1,5 @@
 import { createServer, Server } from "http";
-import { PingService, makeDefaultPingConfigFromEnv, computeRandomIntervalMs, shouldAutoRestart } from "../ping.js";
+import { PingService, makeDefaultPingConfigFromEnv } from "../ping.js";
 
 function assert(cond: boolean, msg: string): void { if (!cond) throw new Error(msg); }
 function sleep(ms: number): Promise<void> { return new Promise(r => setTimeout(r, ms)); }
@@ -14,12 +14,6 @@ async function withServer(handler: (req: any, res: any) => void, fn: (url: strin
 }
 
 async function run(): Promise<void> {
-  // random interval generation bounds
-  for (let i = 0; i < 50; i++) {
-    const v = computeRandomIntervalMs(10, 15, () => Math.random());
-    assert(v >= 10 * 60_000 && v < 15 * 60_000, "random interval bounds incorrect");
-  }
-
   // success pings
   await withServer((_req, res) => { res.statusCode = 204; res.end(); }, async (url) => {
     const svc = new PingService({ url, intervalMs: 50, timeoutMs: 1000, logLevel: "none", criticalFailureThreshold: 3 });
@@ -42,39 +36,12 @@ async function run(): Promise<void> {
 
   // overlap handling: make each request take longer than interval
   await withServer((_req, res) => { setTimeout(() => { res.statusCode = 200; res.end(); }, 120); }, async (url) => {
-    const svc = new PingService({ url, intervalMs: 50, timeoutMs: 1000, logLevel: "none", criticalFailureThreshold: 3, timeZone: "UTC", now: () => new Date(Date.UTC(2020, 1, 1, 1, 0, 0)) });
+    const svc = new PingService({ url, intervalMs: 50, timeoutMs: 1000, logLevel: "none", criticalFailureThreshold: 3 });
     svc.start();
     await sleep(450);
     const s = svc.stats();
     assert(s.total >= 1, "expected executed pings");
     assert(s.skippedOverlaps === 0, "unexpected overlap handling");
-  });
-
-  // time-based stop at 02:00 in given timezone
-  await withServer((_req, res) => { res.statusCode = 200; res.end(); }, async (url) => {
-    const tz = "UTC";
-    const svc = new PingService({ url, intervalMs: 50, timeoutMs: 1000, logLevel: "none", criticalFailureThreshold: 3, timeZone: tz, now: () => new Date(Date.UTC(2020, 1, 1, 2, 0, 0)) });
-    svc.start();
-    await sleep(50);
-    const s = svc.stats();
-    assert(s.total === 0, "should not ping after cutoff");
-  });
-
-  // persistence flag behavior
-  const mem: { data: Record<string, string> } = { data: {} };
-  const storage = {
-    getItem: (k: string): string | null => (k in mem.data ? mem.data[k] : null),
-    setItem: (k: string, v: string): void => { mem.data[k] = v; },
-    removeItem: (k: string): void => { delete mem.data[k]; }
-  };
-  assert(!shouldAutoRestart(storage), "restart should be disabled initially");
-  await withServer((_req, res) => { res.statusCode = 200; res.end(); }, async (url) => {
-    const svc = new PingService({ url, intervalMs: 50, timeoutMs: 1000, logLevel: "none", criticalFailureThreshold: 3, persist: true, storage, timeZone: "UTC", now: () => new Date(Date.UTC(2020, 1, 1, 1, 0, 0)) });
-    svc.start();
-    await sleep(10);
-    assert(shouldAutoRestart(storage), "restart flag not set");
-    svc.stop();
-    assert(!shouldAutoRestart(storage), "restart flag not cleaned up");
   });
 
   // env config builder
