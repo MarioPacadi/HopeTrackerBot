@@ -1,15 +1,8 @@
 import { Pool } from "pg";
 import { env } from "./config.js";
-import { readFileSync, existsSync } from "fs";
-import { resolve, dirname } from "path";
-import { fileURLToPath } from "url";
+import { readFileSync } from "fs";
 
-let ca: Buffer | undefined;
-const candidates = [env.DB_SSL_CA_FILE, "/etc/secrets/ca.pem", resolve(process.cwd(), "ca.pem"), resolve(dirname(fileURLToPath(import.meta.url)), "../assets/ca.pem")];
-for (const p of candidates) {
-  if (p && existsSync(p)) { ca = readFileSync(p); break; }
-}
-const sslOpt = env.DB_SSL ? (ca ? { ca, rejectUnauthorized: true } : { rejectUnauthorized: true }) : undefined;
+const sslOpt = env.DB_SSL ? (env.DB_SSL_CA_FILE ? { ca: readFileSync(env.DB_SSL_CA_FILE), rejectUnauthorized: true } : { rejectUnauthorized: false, checkServerIdentity: () => undefined }) : undefined;
 
 function makePoolFromEnv(): Pool {
   const u = new URL(env.DATABASE_URL);
@@ -43,12 +36,7 @@ export async function ensureDbConnected(retries: number = 5, delayMs: number = 1
       const client = await pool.connect();
       client.release();
       return;
-    } catch (err) {
-      const msg = String(err ?? "");
-      if (/self-signed certificate/i.test(msg) || /SELF_SIGNED_CERT_IN_CHAIN/.test(msg)) {
-        console.error("ssl verification failed; set DB_SSL_CA_FILE to the CA path or mount /etc/secrets/ca.pem");
-        throw err;
-      }
+    } catch {
       await new Promise(r => setTimeout(r, delayMs));
       attempt++;
     }
