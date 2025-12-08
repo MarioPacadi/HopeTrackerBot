@@ -16,8 +16,9 @@ export class TextCommandRouter {
         await userService.register(this.message.author.id, this.message.guild!.id);
         const vals = await userService.read(this.message.author.id, this.message.guild!.id);
         const label = this.message.member?.displayName ?? this.message.author.username;
-        const sent = await this.message.reply(formatValues(label, vals));
-        traitDisplayManager.registerUserMessage(this.message.guild!.id, this.message.author.id, sent.channel.id, sent.id);
+        const text = formatValues(label, vals);
+        const sent = await this.message.reply(text);
+        traitDisplayManager.registerUserMessage(this.message.guild!.id, this.message.author.id, sent.channel.id, sent.id, text, this.message.author.id, { command: "values" });
       },
       unregister: async () => {
         const ok = await userService.unregister(this.message.author.id, this.message.guild!.id);
@@ -115,8 +116,9 @@ export class TextCommandRouter {
       values: async () => {
         const vals = await userService.read(this.message.author.id, this.message.guild!.id);
         const label = this.message.member?.displayName ?? this.message.author.username;
-        const sent = await this.message.reply(formatValues(label, vals));
-        traitDisplayManager.registerUserMessage(this.message.guild!.id, this.message.author.id, sent.channel.id, sent.id);
+        const text = formatValues(label, vals);
+        const sent = await this.message.reply(text);
+        traitDisplayManager.registerUserMessage(this.message.guild!.id, this.message.author.id, sent.channel.id, sent.id, text, this.message.author.id, { command: "register" });
       },
       setuseremoji: async (parts: string[]) => {
         const posStr = parts[1];
@@ -167,4 +169,3 @@ export async function handleMessage(message: Message): Promise<void> {
     await message.reply("error processing command");
   }
 }
-

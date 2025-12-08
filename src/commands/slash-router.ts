@@ -27,7 +27,7 @@ export class SlashCommandRouter {
         const text = formatValues(label, vals, targetId, uRow?.emoji1 ?? null, uRow?.emoji2 ?? null);
         await this.interaction.reply({ content: text });
         const replyMsg = await this.interaction.fetchReply();
-        traitDisplayManager.registerUserMessage(guildId, targetId, replyMsg.channel.id, replyMsg.id);
+        traitDisplayManager.registerUserMessage(guildId, targetId, replyMsg.channel.id, replyMsg.id, text, this.interaction.user.id, { command: "register" });
         await audits.log(guildId, userId, targetId, "register");
       },
       unregister: async () => {
@@ -39,14 +39,16 @@ export class SlashCommandRouter {
         if (ok) await audits.log(guildId, userId, targetId, "unregister");
       },
       values: async () => {
-        const vals = await userService.read(userId, guildId);
-        const member = await this.interaction.guild!.members.fetch(userId).catch(() => null);
-        const label = member?.displayName ?? this.interaction.user.username;
-        const uSelf = await getContainer().users.getByDiscordId(userId, guildId);
-        const text = formatValues(label, vals, userId, uSelf?.emoji1 ?? null, uSelf?.emoji2 ?? null);
+        const target = this.interaction.options.getUser("user");
+        const targetId = target?.id ?? userId;
+        const vals = await userService.read(targetId, guildId);
+        const member = await this.interaction.guild!.members.fetch(targetId).catch(() => null);
+        const label = member?.displayName ?? (target ? target.username : this.interaction.user.username);
+        const uRow = await getContainer().users.getByDiscordId(targetId, guildId);
+        const text = formatValues(label, vals, targetId, uRow?.emoji1 ?? null, uRow?.emoji2 ?? null);
         await this.interaction.reply({ content: text });
         const replyMsg = await this.interaction.fetchReply();
-        traitDisplayManager.registerUserMessage(guildId, userId, replyMsg.channel.id, replyMsg.id);
+        traitDisplayManager.registerUserMessage(guildId, targetId, replyMsg.channel.id, replyMsg.id, text, this.interaction.user.id, { command: "values", user: targetId });
       },
       showvalues: async () => {
         const rows = await tableService.table(guildId);

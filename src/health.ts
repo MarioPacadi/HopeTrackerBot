@@ -1,8 +1,28 @@
 import { createServer } from "http";
 import { pool } from "./db.js";
+import { getContainer } from "./di.js";
 
 export function startHealthServer(port: number): void {
   const server = createServer(async (req, res) => {
+    if (req.url?.startsWith("/values-history")) {
+      const url = new URL(req.url, "http://localhost");
+      const guildId = url.searchParams.get("guildId") ?? "";
+      const userId = url.searchParams.get("userId") ?? "";
+      try {
+        let rows;
+        if (guildId && userId) rows = await getContainer().valuesMessages.listByUser(guildId, userId, 200);
+        else if (guildId) rows = await getContainer().valuesMessages.listForGuild(guildId, 200);
+        else rows = await getContainer().valuesMessages.listAll(200);
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+        const items = rows.map(r => `<li><code>${r.createdAt.toISOString()}</code> | guild=${r.guildId} user=${r.discordUserId} by=${r.creatorUserId} | ${r.content.replace(/</g, "&lt;")}</li>`).join("");
+        res.end(`<!DOCTYPE html><html><body><h1>Values Messages History</h1><ul>${items}</ul></body></html>`);
+      } catch {
+        res.statusCode = 500;
+        res.end("error");
+      }
+      return;
+    }
     if (req.url === "/") {
       let dbOk = false;
       try {

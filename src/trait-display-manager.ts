@@ -89,12 +89,23 @@ export class TraitDisplayManager {
   private tableMessages: Map<string, Array<{ channelId: string; messageId: string }>> = new Map();
   private lastTableMessage: Map<string, { channelId: string; messageId: string; userIds: string[] }> = new Map();
   private updatingTable: Map<string, boolean> = new Map();
-  registerUserMessage(guildId: string, userId: string, channelId: string, messageId: string): void {
+  registerUserMessage(guildId: string, userId: string, channelId: string, messageId: string, content: string, creatorUserId: string, commandParams?: unknown): void {
     if (!this.userMessages.has(guildId)) this.userMessages.set(guildId, new Map());
     const m = this.userMessages.get(guildId)!;
     const arr = m.get(userId) ?? [];
     arr.push({ channelId, messageId });
     m.set(userId, arr);
+    getContainer().valuesMessages.add({
+      guildId,
+      channelId,
+      messageId,
+      discordUserId: userId,
+      creatorUserId,
+      commandName: "values",
+      commandParams: commandParams ?? null,
+      content,
+      createdAt: new Date()
+    }).catch(err => { console.error("persist values message error", { guildId, userId, err }); });
   }
   registerTableMessage(guildId: string, channelId: string, messageId: string, userIds?: string[]): void {
     const arr = this.tableMessages.get(guildId) ?? [];
@@ -191,6 +202,16 @@ export class TraitDisplayManager {
       const rows = await getContainer().lastTable.listAll();
       for (const r of rows) {
         this.lastTableMessage.set(r.guildId, { channelId: r.channelId, messageId: r.messageId, userIds: r.userIds });
+      }
+      const retentionDays = Number(process.env.VALUES_MSG_RETENTION_DAYS ?? "60");
+      try { await getContainer().valuesMessages.cleanup(Math.max(1, retentionDays)); } catch {}
+      const all = await getContainer().valuesMessages.listAll(50);
+      for (const v of all) {
+        if (!this.userMessages.has(v.guildId)) this.userMessages.set(v.guildId, new Map());
+        const m = this.userMessages.get(v.guildId)!;
+        const arr = m.get(v.discordUserId) ?? [];
+        arr.push({ channelId: v.channelId, messageId: v.messageId });
+        m.set(v.discordUserId, arr);
       }
     } catch (err) {
       console.error("load last table message error", err);

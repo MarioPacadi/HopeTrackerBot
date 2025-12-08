@@ -7,7 +7,9 @@ export interface CommandSpec { name: string; description: string; shared: boolea
 const specs: ReadonlyArray<CommandSpec> = [
   { name: "register", description: "Register user", shared: true, options: [{ name: "user", kind: "user", required: false }] },
   { name: "unregister", description: "Unregister user", shared: true, options: [{ name: "user", kind: "user", required: false }] },
-  { name: "values", description: "Show your values", shared: true },
+  { name: "values", description: "Show your values", shared: true, options: [
+    { name: "user", kind: "user", required: false }
+  ] },
   { name: "showvalues", description: "Show table users and values", shared: true },
   { name: "update_trait", description: "Update a trait", shared: false, options: [
     { name: "trait", kind: "string", required: true },
