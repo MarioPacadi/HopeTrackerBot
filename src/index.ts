@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, Partials } from "discord.js";
+import { Client, GatewayIntentBits, Partials, ActivityType } from "discord.js";
 import { env } from "./config.js";
 import { handleMessage } from "./commands.js";
 import { traitDisplayManager } from "./trait-display-manager.js";
@@ -28,8 +28,15 @@ const client = new Client({
  * Registers slash commands and sets avatar on client ready.
  */
 /* Command registration happens within the``client.on("clientReady", ...)`` event. This uses a loop to iterate through guilds and calls``guild.commands.set(commandDefs)`` . This means that existing guild commands get completely replaced each bot startup. */
-client.once("ready", async () => {
+client.on("clientReady", async () => {
   console.log(`logged in as ${client.user?.tag}`);
+  try {
+    client.user?.setPresence({
+      status: "online",
+      activities: [{ name: "for commands", type: ActivityType.Listening }]
+    });
+  } catch {}
+
   try {
     const filePath = resolve(__dirname, "./assets/Hope.png");
     const data = readFileSync(filePath);
@@ -107,6 +114,7 @@ async function start(): Promise<void> {
   }
   if (!connected) {
     console.error("startup db initialization failed");
+    process.exit(1);
   }
   await traitDisplayManager.loadFromStorage();
   await client.login(env.DISCORD_TOKEN);
@@ -114,4 +122,5 @@ async function start(): Promise<void> {
 
 start().catch(err => {
   console.error("startup error", err);
+  process.exit(1);
 });
