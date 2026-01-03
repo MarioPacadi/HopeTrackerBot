@@ -165,8 +165,10 @@ export async function main(): Promise<void> {
 }
 
 dotenv.config();
+import { Logger } from "./logger.js";
+
 // Run only when executed directly as the entrypoint script
 const entry = process.argv[1] ?? "";
 if (entry.includes("migrate-to-aiven")) {
-  main().catch(err => { console.error("aiven migrate error", err); process.exit(1); });
+  main().catch(err => { Logger.error("aiven migrate error", err); process.exit(1); });
 }

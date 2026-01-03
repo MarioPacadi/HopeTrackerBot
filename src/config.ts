@@ -22,3 +22,13 @@ const DB_SSL: boolean = ((process.env.DB_SSL ?? (isLocal ? "false" : "true")) ==
 const DB_SSL_CA_FILE: string | undefined = process.env.DB_SSL_CA_FILE ?? undefined;
 
 export const env: Env = { DISCORD_TOKEN, DATABASE_URL, COMMAND_PREFIX, DB_SSL, DB_SSL_CA_FILE };
+
+export function validateConfig(): void {
+  const missing: string[] = [];
+  if (!env.DISCORD_TOKEN) missing.push("DISCORD_TOKEN");
+  if (!env.DATABASE_URL) missing.push("DATABASE_URL");
+  
+  if (missing.length > 0) {
+    throw new Error(`Missing required environment variables: ${missing.join(", ")}`);
+  }
+}

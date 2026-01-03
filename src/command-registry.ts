@@ -1,4 +1,5 @@
 import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
+import { Logger } from "./logger.js";
 
 type OptKind = "string" | "integer" | "user";
 export interface SlashOptionSpec { name: string; kind: OptKind; required: boolean }
@@ -71,7 +72,7 @@ export function buildSlashCommands(): ReadonlyArray<SlashCommandBuilder> {
   for (const spec of specs) {
     const safe = sanitizeName(spec.name);
     if (!isValidName(safe)) {
-      try { console.error("invalid command name", { name: spec.name }); } catch {}
+      try { Logger.error("invalid command name", { name: spec.name }); } catch {}
       continue;
     }
     const b = new SlashCommandBuilder().setName(safe).setDescription(spec.description);

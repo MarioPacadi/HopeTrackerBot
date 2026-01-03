@@ -2,6 +2,7 @@ import { request as httpRequest } from "http";
 import { request as httpsRequest } from "https";
 import { URL } from "url";
 import { performance } from "perf_hooks";
+import { Logger as GlobalLogger } from "./logger.js";
 
 export type LogLevel = "none" | "normal" | "debug";
 
@@ -40,9 +41,9 @@ export interface Notifier {
 class Logger {
   private level: LogLevel;
   constructor(level: LogLevel) { this.level = level; }
-  info(msg: string, extra?: Record<string, unknown>): void { if (this.level === "normal" || this.level === "debug") console.log(msg, extra ?? {}); }
-  debug(msg: string, extra?: Record<string, unknown>): void { if (this.level === "debug") console.log(msg, extra ?? {}); }
-  error(msg: string, extra?: Record<string, unknown>): void { if (this.level !== "none") console.error(msg, extra ?? {}); }
+  info(msg: string, extra?: Record<string, unknown>): void { if (this.level === "normal" || this.level === "debug") GlobalLogger.info(msg, extra); }
+  debug(msg: string, extra?: Record<string, unknown>): void { if (this.level === "debug") GlobalLogger.debug(msg, extra); }
+  error(msg: string, extra?: Record<string, unknown>): void { if (this.level !== "none") GlobalLogger.error(msg, extra); }
 }
 
 class HttpPinger {

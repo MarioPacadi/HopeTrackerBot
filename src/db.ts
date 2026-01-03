@@ -1,6 +1,7 @@
 import { Pool } from "pg";
 import { env } from "./config.js";
 import { readFileSync } from "fs";
+import { Logger } from "./logger.js";
 
 const sslOpt = env.DB_SSL ? (env.DB_SSL_CA_FILE ? { ca: readFileSync(env.DB_SSL_CA_FILE), rejectUnauthorized: true } : { rejectUnauthorized: false, checkServerIdentity: () => undefined }) : undefined;
 
@@ -24,7 +25,7 @@ export async function query<T>(text: string, params: ReadonlyArray<unknown>): Pr
     const res = await pool.query(text, params as unknown[]);
     return { rows: res.rows as T[] };
   } catch (err) {
-    console.error("db query error", { text, err });
+    Logger.error("db query error", { text, err });
     throw err;
   }
 }
@@ -91,7 +92,7 @@ export async function ensureSchema(): Promise<void> {
         await client.query(sql4);
       }
       await client.query("commit");
-      console.log("schema initialized");
+      Logger.info("schema initialized");
     } catch (err) {
       try { await client.query("rollback"); } catch {}
       throw err;

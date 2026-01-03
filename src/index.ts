@@ -1,15 +1,17 @@
 import { Client, GatewayIntentBits, Partials, ActivityType } from "discord.js";
-import { env } from "./config.js";
+import { env, validateConfig } from "./config.js";
 import { handleMessage } from "./commands.js";
 import { traitDisplayManager } from "./trait-display-manager.js";
 import { handleSlashInteraction } from "./commands.js";
 import { buildSlashCommands } from "./command-registry.js";
-import { ensureDbConnected, ensureSchema } from "./db.js";
+import { ensureDbConnected, ensureSchema, pool } from "./db.js";
 import { startHealthServer } from "./health.js";
 import { readFileSync } from "fs";
 import { resolve } from "path";
 import { imageSize } from "image-size";
 import { PingService, makeDefaultPingConfigFromEnv } from "./ping.js";
+import { ShutdownManager } from "./shutdown.js";
+import { Logger } from "./logger.js";
 
 /**
  * Discord client setup and lifecycle orchestration.
@@ -29,7 +31,7 @@ const client = new Client({
  */
 /* Command registration happens within the``client.on("clientReady", ...)`` event. This uses a loop to iterate through guilds and calls``guild.commands.set(commandDefs)`` . This means that existing guild commands get completely replaced each bot startup. */
 client.on("clientReady", async () => {
-  console.log(`logged in as ${client.user?.tag}`);
+  Logger.info(`logged in as ${client.user?.tag}`);
   try {
     client.user?.setPresence({
       status: "online",
@@ -51,17 +53,17 @@ client.on("clientReady", async () => {
     try {
       await guild.commands.set(commandDefs);
     } catch {
-      console.log(`failed to set commands for guild ${guild.id}`);
+      Logger.warn(`failed to set commands for guild ${guild.id}`);
     }
   }
 });
 
 client.on("error", err => {
-  try { console.error("client error", err); } catch {}
+  try { Logger.error("client error", err); } catch {}
 });
 
 process.on("unhandledRejection", err => {
-  try { console.error("unhandled rejection", err); } catch {}
+  try { Logger.error("unhandled rejection", err); } catch {}
 });
 
 /**
@@ -71,7 +73,7 @@ client.on("messageCreate", async message => {
   try {
     await handleMessage(message);
   } catch (err) {
-    try { console.error("message handler error", err); } catch {}
+    try { Logger.error("message handler error", err); } catch {}
   }
 });
 
@@ -84,7 +86,7 @@ client.on("interactionCreate", async interaction => {
       await handleSlashInteraction(interaction);
     }
   } catch (err) {
-    try { console.error("slash command error", { command: interaction.isChatInputCommand() ? interaction.commandName : undefined, err }); } catch {}
+    try { Logger.error("slash command error", { command: interaction.isChatInputCommand() ? interaction.commandName : undefined, err }); } catch {}
   }
 });
 
@@ -92,9 +94,11 @@ client.on("interactionCreate", async interaction => {
  * Initializes health server, database connectivity, schema, cache, and logs in the client.
  */
 async function start(): Promise<void> {
-  if (!env.DISCORD_TOKEN || !env.DATABASE_URL) {
-    throw new Error("missing env");
-  }
+  validateConfig();
+
+  const shutdown = new ShutdownManager(client, pool);
+  shutdown.setup();
+
   startHealthServer(Number(process.env.PORT ?? "8080"));
   const cfg = makeDefaultPingConfigFromEnv();
   if (cfg) {
@@ -113,7 +117,7 @@ async function start(): Promise<void> {
     }
   }
   if (!connected) {
-    console.error("startup db initialization failed");
+    Logger.error("startup db initialization failed");
     process.exit(1);
   }
   await traitDisplayManager.loadFromStorage();
@@ -121,6 +125,6 @@ async function start(): Promise<void> {
 }
 
 start().catch(err => {
-  console.error("startup error", err);
+  Logger.error("startup error", err);
   process.exit(1);
 });

@@ -6,6 +6,7 @@ COPY tsconfig.json ./
 COPY src ./src
 COPY migrations ./migrations
 RUN npm run build
+COPY src/assets ./dist/assets
 
 FROM node:20-alpine
 ENV NODE_ENV=production

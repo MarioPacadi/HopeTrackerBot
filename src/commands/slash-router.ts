@@ -2,6 +2,10 @@ import { ChatInputCommandInteraction } from "discord.js";
 import { traitDisplayManager, formatValues, formatShowValues } from "../trait-display-manager.js";
 import { getContainer } from "../di.js";
 import { services, isAdminOrGMInteraction } from "./utils.js";
+import { RateLimiter } from "../rate-limit.js";
+import { Logger } from "../logger.js";
+
+const limiter = new RateLimiter(20, 60000); // 20 commands per minute per user
 
 /** Handles slash command interactions */
 export class SlashCommandRouter {
@@ -186,6 +190,12 @@ export class SlashCommandRouter {
 /** Entry point for slash command handling */
 export async function handleSlashInteraction(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.isChatInputCommand()) return;
+  
+  if (!limiter.check(interaction.user.id)) {
+    await interaction.reply({ content: "Rate limit exceeded. Please wait a minute.", ephemeral: true });
+    return;
+  }
+
   const guildId = interaction.guildId;
   if (!guildId) return;
   const name = interaction.commandName;
@@ -197,17 +207,18 @@ export async function handleSlashInteraction(interaction: ChatInputCommandIntera
     const map = await router.handlers();
     const fn = map[name];
     if (!fn) {
+      Logger.warn("unknown command", { command: name, user: interaction.user.id });
       await interaction.editReply("unknown command");
       return;
     }
     await fn();
   } catch (err) {
-    try { console.error("slash command error", { command: name, err }); } catch {}
+    Logger.error("command error", err);
     try {
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply("error processing command");
       } else {
-        await interaction.reply("error processing command");
+        await interaction.reply({ content: "error processing command", ephemeral: true });
       }
     } catch {}
   }

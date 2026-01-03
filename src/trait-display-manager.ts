@@ -1,5 +1,6 @@
 import { Client, TextChannel } from "discord.js";
 import { getContainer } from "./di.js";
+import { Logger } from "./logger.js";
 
 export function formatValues(userLabel: string, values: Array<{ emoji: string; name: string; amount: number }>, discordUserId?: string, emoji1?: string | null, emoji2?: string | null): string {
   const order = ["Health", "Stress", "Armor", "Hope"];
@@ -105,7 +106,7 @@ export class TraitDisplayManager {
       commandParams: commandParams ?? null,
       content,
       createdAt: new Date()
-    }).catch(err => { console.error("persist values message error", { guildId, userId, err }); });
+    }).catch(err => { Logger.error("persist values message error", { guildId, userId, err }); });
   }
   registerTableMessage(guildId: string, channelId: string, messageId: string, userIds?: string[]): void {
     const arr = this.tableMessages.get(guildId) ?? [];
@@ -133,7 +134,7 @@ export class TraitDisplayManager {
         if (msg) await msg.edit(text).catch(() => {});
       }
     } catch (err) {
-      console.error("refreshUser error", { guildId, userId, err });
+      Logger.error("refreshUser error", { guildId, userId, err });
     }
   }
   async refreshTable(client: Client, guildId: string): Promise<void> {
@@ -157,14 +158,14 @@ export class TraitDisplayManager {
         if (msg) await msg.edit(text).catch(() => {});
       }
     } catch (err) {
-      console.error("refreshTable error", { guildId, err });
+      Logger.error("refreshTable error", { guildId, err });
     }
   }
   async refreshLastTableForUser(client: Client, guildId: string, userId: string): Promise<void> {
     const last = this.lastTableMessage.get(guildId);
-    if (!last) { console.log("skip table update: no last message", { guildId }); return; }
-    if (!last.userIds.includes(userId)) { console.log("skip table update: user not referenced", { guildId, userId }); return; }
-    if (this.updatingTable.get(guildId)) { console.log("skip table update: concurrent update", { guildId }); return; }
+    if (!last) { Logger.debug("skip table update: no last message", { guildId }); return; }
+    if (!last.userIds.includes(userId)) { Logger.debug("skip table update: user not referenced", { guildId, userId }); return; }
+    if (this.updatingTable.get(guildId)) { Logger.debug("skip table update: concurrent update", { guildId }); return; }
     this.updatingTable.set(guildId, true);
     try {
       const { userService, users } = getContainer();
@@ -181,11 +182,11 @@ export class TraitDisplayManager {
       const text = lines.join("\n");
       const channel = (await client.channels.fetch(last.channelId)) as TextChannel;
       const msg = await channel.messages.fetch(last.messageId).catch(() => null);
-      if (!msg) { console.log("skip table update: message missing", { guildId }); return; }
-      await msg.edit(text).catch(err => { console.error("table edit error", { guildId, err }); });
-      console.log("table updated", { guildId, count: last.userIds.length });
+      if (!msg) { Logger.warn("skip table update: message missing", { guildId }); return; }
+      await msg.edit(text).catch(err => { Logger.error("table edit error", { guildId, err }); });
+      Logger.info("table updated", { guildId, count: last.userIds.length });
     } catch (err) {
-      console.error("refreshLastTableForUser error", { guildId, userId, err });
+      Logger.error("refreshLastTableForUser error", { guildId, userId, err });
     } finally {
       this.updatingTable.delete(guildId);
     }
@@ -214,7 +215,7 @@ export class TraitDisplayManager {
         m.set(v.discordUserId, arr);
       }
     } catch (err) {
-      console.error("load last table message error", err);
+      Logger.error("load last table message error", err);
     }
   }
 }

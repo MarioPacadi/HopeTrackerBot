@@ -4,6 +4,10 @@ import { traitDisplayManager, formatValues } from "../trait-display-manager.js";
 import { getContainer } from "../di.js";
 import { getSharedCommandNames, validateTextParity } from "../command-registry.js";
 import { isAdmin, parseAmount, services } from "./utils.js";
+import { RateLimiter } from "../rate-limit.js";
+import { Logger } from "../logger.js";
+
+const limiter = new RateLimiter(20, 60000);
 
 /** Handles text-based commands for guild messages */
 export class TextCommandRouter {
@@ -59,8 +63,11 @@ export class TextCommandRouter {
         const name = parts[1];
         const emoji = parts[2];
         if (!name || !emoji) { await this.message.reply("usage: !createtype <name> <emoji>"); return; }
+        if (name.length > 32) { await this.message.reply("name too long (max 32)"); return; }
+        if (emoji.length > 32) { await this.message.reply("emoji too long"); return; }
         await traitService.create(this.message.guild!.id, name, emoji);
         await this.message.reply("created");
+        await traitDisplayManager.triggerUpdate(this.message.client, this.message.guild!.id, this.message.author.id);
       },
       deletetype: async (parts: string[]) => {
         if (!isAdmin(this.message)) { await this.message.reply("permission denied"); return; }
@@ -153,19 +160,26 @@ export async function handleMessage(message: Message): Promise<void> {
   const parts = cmdline.split(/\s+/);
   const cmd = parts[0]?.toLowerCase();
   if (!cmd) return;
+  
+  if (!limiter.check(message.author.id)) {
+    // silently ignore or react to avoid spam loops
+    return; 
+  }
+
   const router = new TextCommandRouter(message);
   const map = router.handlers();
   const shared = new Set(getSharedCommandNames());
   const parity = validateTextParity(Object.keys(map));
   if (parity.missingInText.length || parity.missingTextHandlers.length) {
-    console.error("command parity mismatch", parity);
+    Logger.warn("command parity mismatch", parity);
   }
   if (!shared.has(cmd)) return;
   const fn = map[cmd];
   if (!fn) return;
   try {
     await fn(parts);
-  } catch {
+  } catch (err) {
+    Logger.error("text command error", err);
     await message.reply("error processing command");
   }
 }

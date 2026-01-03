@@ -42,6 +42,7 @@ export function startHealthServer(port: number): void {
           "<p>Bot web service is running.</p>" +
           (dbOk ? "<p>Database: <span style=\"color:#22c55e\">ok</span></p>" : "<p>Database: <span style=\"color:#ef4444\">error</span></p>") +
           "<p>Health check: <a href=\"/healthz\">/healthz</a></p>" +
+          "<p>Metrics: <a href=\"/metrics\">/metrics</a></p>" +
           "</main></body></html>"
       );
       return;
@@ -51,14 +52,27 @@ export function startHealthServer(port: number): void {
         await pool.query("select 1");
         res.statusCode = 200;
         res.end("ok");
-      } catch {
-        res.statusCode = 500;
-        res.end("db error");
-      }
-      return;
+    } catch {
+      res.statusCode = 500;
+      res.end("db error");
     }
-    res.statusCode = 404;
-    res.end("not found");
-  });
-  server.listen(port);
+    return;
+  }
+  if (req.url === "/metrics") {
+    const uptime = process.uptime();
+    const memory = process.memoryUsage();
+    const metrics = {
+      uptime,
+      memory,
+      timestamp: new Date().toISOString()
+    };
+    res.statusCode = 200;
+    res.setHeader("Content-Type", "application/json");
+    res.end(JSON.stringify(metrics, null, 2));
+    return;
+  }
+  res.statusCode = 404;
+  res.end("not found");
+});
+server.listen(port);
 }
