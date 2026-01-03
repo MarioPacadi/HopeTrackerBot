@@ -11,7 +11,7 @@ export class Logger {
   }
 
   static debug(message: string, meta?: unknown): void {
-    if (process.env.LOG_LEVEL === "debug") {
+    if (process.env.LOG_LEVEL === "debug" || process.env.NODE_ENV !== "production") {
       console.debug(Logger.format("debug", message, meta));
     }
   }

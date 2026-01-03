@@ -90,6 +90,9 @@ client.on("interactionCreate", async interaction => {
   }
 });
 
+client.on("debug", m => Logger.debug(m));
+client.on("warn", m => Logger.warn(m));
+
 export let startupState = "initializing";
 
 /**
@@ -135,7 +138,16 @@ async function start(): Promise<void> {
   await traitDisplayManager.loadFromStorage();
   
   startupState = "logging_in";
-  await client.login(env.DISCORD_TOKEN);
+  try {
+    await Promise.race([
+      client.login(env.DISCORD_TOKEN),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Login timed out after 30s")), 30000))
+    ]);
+  } catch (err) {
+    startupState = "login_failed";
+    Logger.error("Discord login failed", err);
+    process.exit(1);
+  }
   startupState = "ready";
 }
 
