@@ -19,7 +19,8 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBit
 /**
  * Registers slash commands and sets avatar on client ready.
  */
-client.on("clientReady", async () => {
+/* Command registration happens within the``client.on("clientReady", ...)`` event. This uses a loop to iterate through guilds and calls``guild.commands.set(commandDefs)`` . This means that existing guild commands get completely replaced each bot startup. */
+client.once("ready", async () => {
   try {
     const filePath = resolve(__dirname, "./assets/Hope.png");
     const data = readFileSync(filePath);
