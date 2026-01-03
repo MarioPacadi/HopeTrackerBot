@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
+import { Client, GatewayIntentBits, Partials } from "discord.js";
 import { env } from "./config.js";
 import { handleMessage } from "./commands.js";
 import { traitDisplayManager } from "./trait-display-manager.js";
@@ -14,13 +14,22 @@ import { PingService, makeDefaultPingConfigFromEnv } from "./ping.js";
 /**
  * Discord client setup and lifecycle orchestration.
  */
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers,
+  ],
+  partials: [Partials.Message, Partials.Channel, Partials.Reaction, Partials.User, Partials.GuildMember],
+});
 
 /**
  * Registers slash commands and sets avatar on client ready.
  */
 /* Command registration happens within the``client.on("clientReady", ...)`` event. This uses a loop to iterate through guilds and calls``guild.commands.set(commandDefs)`` . This means that existing guild commands get completely replaced each bot startup. */
 client.once("ready", async () => {
+  console.log(`logged in as ${client.user?.tag}`);
   try {
     const filePath = resolve(__dirname, "./assets/Hope.png");
     const data = readFileSync(filePath);
