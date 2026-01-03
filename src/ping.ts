@@ -54,12 +54,20 @@ class HttpPinger {
       const controller = new AbortController();
       const timer = setTimeout(() => { controller.abort(); }, timeoutMs);
       const isHttps = url.protocol === "https:";
+      
+      // Ensure we are hitting the root or health endpoint, not the bare port if using Render
+      // If the user configured just the hostname, ensure path is /
+      const reqPath = url.pathname === "/" ? "/" : url.pathname;
+
       const req = (isHttps ? httpsRequest : httpRequest)({
         protocol: url.protocol,
         hostname: url.hostname,
         port: url.port ? Number(url.port) : undefined,
-        path: url.pathname + (url.search || ""),
+        path: reqPath + (url.search || ""),
         method: "GET",
+        headers: {
+            "User-Agent": "HopeTrackerBot-HealthCheck/1.0"
+        },
         signal: controller.signal,
         timeout: timeoutMs
       }, res => {
