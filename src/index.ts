@@ -90,38 +90,53 @@ client.on("interactionCreate", async interaction => {
   }
 });
 
+export let startupState = "initializing";
+
 /**
  * Initializes health server, database connectivity, schema, cache, and logs in the client.
  */
 async function start(): Promise<void> {
+  startupState = "validating_config";
   validateConfig();
 
   const shutdown = new ShutdownManager(client, pool);
   shutdown.setup();
 
   startHealthServer(Number(process.env.PORT ?? "8080"), client);
+  
+  startupState = "ping_service_init";
   const cfg = makeDefaultPingConfigFromEnv();
   if (cfg) {
     const service = new PingService(cfg);
     service.start();
   }
+  
+  startupState = "db_connecting";
   let connected = false;
   for (let i = 0; i < 10; i++) {
     try {
       await ensureDbConnected();
+      startupState = "db_schema_check";
       await ensureSchema();
       connected = true;
       break;
     } catch {
+      startupState = `db_connecting_retry_${i + 1}`;
       await new Promise(r => setTimeout(r, 2000));
     }
   }
   if (!connected) {
+    startupState = "db_failed";
     Logger.error("startup db initialization failed");
     process.exit(1);
   }
+  
+  startupState = "loading_traits";
   await traitDisplayManager.loadFromStorage();
+  
+  startupState = "logging_in";
   await client.login(env.DISCORD_TOKEN);
+  startupState = "ready";
 }
 
 start().catch(err => {

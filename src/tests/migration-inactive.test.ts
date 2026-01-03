@@ -8,7 +8,7 @@ async function run(): Promise<void> {
   // @ts-ignore
   process.exit = (code?: number): never => { exited = true; throw new Error(`unexpected exit ${code}`); };
   try {
-    const mod = await import("../migrate-to-aiven.js");
+    const mod = await import("../../openspec/changes/archive/migrate-to-aiven.js");
     assert(typeof mod.main === "function", "migration main function not exported");
     assert(!exited, "migration should be inactive on import");
   } finally {

@@ -2,12 +2,14 @@ import { createServer } from "http";
 import { Client } from "discord.js";
 import { pool } from "./db.js";
 import { getContainer } from "./di.js";
+import { startupState } from "./index.js";
 
 export function startHealthServer(port: number, client: Client): void {
   const server = createServer(async (req, res) => {
     if (req.url === "/bot-status") {
       const status = {
         ready: client.isReady(),
+        startupState: startupState,
         user: client.user?.tag ?? "null",
         uptime: client.uptime,
         ping: client.ws.ping,
@@ -58,6 +60,7 @@ export function startHealthServer(port: number, client: Client): void {
           (dbOk ? "<p>Database: <span style=\"color:#22c55e\">ok</span></p>" : "<p>Database: <span style=\"color:#ef4444\">error</span></p>") +
           "<p>Health check: <a href=\"/healthz\">/healthz</a></p>" +
           "<p>Metrics: <a href=\"/metrics\">/metrics</a></p>" +
+          "<p>Bot status: <a href=\"/bot-status\">/bot-status</a></p>" +
           "</main></body></html>"
       );
       return;
