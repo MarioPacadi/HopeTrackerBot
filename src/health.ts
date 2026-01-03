@@ -1,9 +1,24 @@
 import { createServer } from "http";
+import { Client } from "discord.js";
 import { pool } from "./db.js";
 import { getContainer } from "./di.js";
 
-export function startHealthServer(port: number): void {
+export function startHealthServer(port: number, client: Client): void {
   const server = createServer(async (req, res) => {
+    if (req.url === "/bot-status") {
+      const status = {
+        ready: client.isReady(),
+        user: client.user?.tag ?? "null",
+        uptime: client.uptime,
+        ping: client.ws.ping,
+        status: client.ws.status,
+        guilds: client.guilds.cache.size
+      };
+      res.statusCode = 200;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify(status, null, 2));
+      return;
+    }
     if (req.url?.startsWith("/values-history")) {
       const url = new URL(req.url, "http://localhost");
       const guildId = url.searchParams.get("guildId") ?? "";

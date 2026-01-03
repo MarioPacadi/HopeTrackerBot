@@ -99,7 +99,7 @@ async function start(): Promise<void> {
   const shutdown = new ShutdownManager(client, pool);
   shutdown.setup();
 
-  startHealthServer(Number(process.env.PORT ?? "8080"));
+  startHealthServer(Number(process.env.PORT ?? "8080"), client);
   const cfg = makeDefaultPingConfigFromEnv();
   if (cfg) {
     const service = new PingService(cfg);
