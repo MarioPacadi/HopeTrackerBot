@@ -9,7 +9,7 @@ async function withServer(handler: (req: any, res: any) => void, fn: (url: strin
   await new Promise<void>(resolve => srv.listen(0, resolve));
   const address = srv.address();
   const port = typeof address === "object" && address ? address.port : 0;
-  const url = `https://hopetrackerbot.onrender.com/`;
+  const url = `http://localhost:${port}/`;
   try { await fn(url, srv); } finally { await new Promise<void>(resolve => srv.close(() => resolve())); }
 }
 
@@ -45,7 +45,7 @@ async function run(): Promise<void> {
   });
 
   // env config builder
-  process.env.PING_URL = "https://hopetrackerbot.onrender.com/";
+  process.env.PING_URL = "https://example.com/";
   process.env.PING_INTERVAL_MINUTES = "10";
   process.env.PING_TIMEOUT_SECONDS = "30";
   process.env.PING_LOG_LEVEL = "debug";

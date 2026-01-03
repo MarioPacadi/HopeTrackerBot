@@ -2,3 +2,7 @@ dist
 node_modules
 .env
 */assets/ca.pem
+
+openspec
+.windsurf
+AGENTS.md

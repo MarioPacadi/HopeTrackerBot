@@ -13,15 +13,15 @@
     "test": "node dist/tests/init.test.js && node dist/tests/command-name-validation.test.js && node dist/tests/router-exports.test.js && node dist/tests/user-service.test.js && node dist/tests/user-emoji.test.js && node dist/tests/ping-service.test.js && node dist/tests/values-history.test.js && node dist/tests/single-db-verify.test.js && node dist/tests/migration-inactive.test.js"
   },
   "dependencies": {
-    "discord.js": "^14.16.3",
-    "dotenv": "^16.4.5",
-    "pg": "^8.11.3",
-    "image-size": "^1.0.2"
+    "discord.js": "^14.25.1",
+    "dotenv": "^17.2.3",
+    "image-size": "^2.0.2",
+    "pg": "^8.16.3"
   },
   "devDependencies": {
-    "@types/pg": "^8.15.6",
+    "@types/pg": "^8.16.0",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.6.3"
+    "typescript": "^5.9.3"
   }
 }
