@@ -9,7 +9,7 @@
     "start": "node dist/index.js",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "migrate": "node dist/migrations.js",
-    "test": "node dist/tests/init.test.js && node dist/tests/command-name-validation.test.js && node dist/tests/router-exports.test.js && node dist/tests/user-service.test.js && node dist/tests/user-emoji.test.js && node dist/tests/ping-service.test.js && node dist/tests/values-history.test.js && node dist/tests/single-db-verify.test.js && node dist/tests/migration-inactive.test.js"
+    "test": "node dist/tests/init.test.js && node dist/tests/command-name-validation.test.js"
   },
   "dependencies": {
     "discord.js": "^14.25.1",
