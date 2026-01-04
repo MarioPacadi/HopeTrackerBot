@@ -26,11 +26,11 @@ const client = new Client({
   partials: [Partials.Message, Partials.Channel, Partials.Reaction, Partials.User, Partials.GuildMember],
 });
 
+// (node:1) DeprecationWarning: The ready event has been renamed to clientReady to distinguish it from the gateway READY event and will only emit under that name in v15. Please use clientReady instead.
 /**
  * Registers slash commands and sets avatar on client ready.
  */
-/* Command registration happens within the``client.on("clientReady", ...)`` event. This uses a loop to iterate through guilds and calls``guild.commands.set(commandDefs)`` . This means that existing guild commands get completely replaced each bot startup. */
-client.once("ready", async () => {
+client.on("clientReady", async () => {
   Logger.info(`logged in as ${client.user?.tag}`);
   try {
     client.user?.setPresence({

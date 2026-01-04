@@ -200,8 +200,31 @@ export async function handleSlashInteraction(interaction: ChatInputCommandIntera
   if (!guildId) return;
   const name = interaction.commandName;
   const { defaults } = services();
+  
+  // Use RateLimiter before deferring
+  if (!limiter.check(interaction.user.id)) {
+    // If rate limited, we must reply quickly without deferring if possible, 
+    // but typically we can just return or reply ephemeral
+    try {
+        await interaction.reply({ content: "You are being rate limited. Please try again later.", flags: 64 }); // 64 = Ephemeral
+    } catch {}
+    return;
+  }
+
   try {
-    await interaction.deferReply();
+    // Defer immediately to prevent "Unknown Interaction" on slow starts
+    // But catch 10062 in case it already expired
+    try {
+        await interaction.deferReply();
+    } catch (deferErr: any) {
+        // If the interaction is already unknown, we can't do anything
+        if (deferErr.code === 10062) {
+            Logger.warn("Interaction expired before deferral (10062)", { command: name });
+            return;
+        }
+        throw deferErr;
+    }
+
     await defaults.ensureDefaults(guildId);
     const router = new SlashCommandRouter(interaction);
     const map = await router.handlers();
@@ -218,7 +241,7 @@ export async function handleSlashInteraction(interaction: ChatInputCommandIntera
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply("error processing command");
       } else {
-        await interaction.reply({ content: "error processing command", ephemeral: true });
+        await interaction.reply({ content: "error processing command", flags: 64 });
       }
     } catch {}
   }
