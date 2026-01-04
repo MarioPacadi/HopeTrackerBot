@@ -142,6 +142,29 @@ async function start(): Promise<void> {
   startupState = "loading_traits";
   await traitDisplayManager.loadFromStorage();
   
+  startupState = "checking_network";
+  try {
+    Logger.info("Testing connection to Discord API...");
+    const start = Date.now();
+    const res = await fetch("https://discord.com/api/v10/gateway", {
+      signal: AbortSignal.timeout(5000)
+    });
+    const dur = Date.now() - start;
+    Logger.info(`Discord API Check: Status ${res.status} (${dur}ms)`);
+    if (!res.ok) {
+      Logger.warn(`Discord API returned non-200: ${res.status} ${res.statusText}`);
+    }
+  } catch (err) {
+    Logger.error("CRITICAL: Unable to reach Discord API (Network/DNS issue)", err);
+  }
+
+  // Token sanity check
+  if (!env.DISCORD_TOKEN || env.DISCORD_TOKEN.length < 50) {
+    Logger.error("CRITICAL: DISCORD_TOKEN appears invalid or too short.");
+  } else {
+    Logger.info(`Token check: Present (Length: ${env.DISCORD_TOKEN.length})`);
+  }
+
   startupState = "logging_in";
   
   // Force a hard timeout for the entire process if login takes too long
