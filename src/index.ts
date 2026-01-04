@@ -30,7 +30,7 @@ const client = new Client({
  * Registers slash commands and sets avatar on client ready.
  */
 /* Command registration happens within the``client.on("clientReady", ...)`` event. This uses a loop to iterate through guilds and calls``guild.commands.set(commandDefs)`` . This means that existing guild commands get completely replaced each bot startup. */
-client.on("clientReady", async () => {
+client.once("ready", async () => {
   Logger.info(`logged in as ${client.user?.tag}`);
   try {
     client.user?.setPresence({
@@ -92,6 +92,11 @@ client.on("interactionCreate", async interaction => {
 
 client.on("debug", m => Logger.debug(m));
 client.on("warn", m => Logger.warn(m));
+client.on("shardReady", (id) => Logger.info(`Shard ${id} is ready`));
+client.on("shardResume", (id) => Logger.info(`Shard ${id} resumed`));
+client.on("shardDisconnect", (evt, id) => Logger.warn(`Shard ${id} disconnected`, evt));
+client.on("shardReconnecting", (id) => Logger.info(`Shard ${id} reconnecting`));
+client.on("shardError", (err, id) => Logger.error(`Shard ${id} error`, err));
 
 export let startupState = "initializing";
 
@@ -138,12 +143,21 @@ async function start(): Promise<void> {
   await traitDisplayManager.loadFromStorage();
   
   startupState = "logging_in";
+  
+  // Force a hard timeout for the entire process if login takes too long
+  // This prevents the "zombie process" state on Render
+  const loginTimeout = setTimeout(() => {
+    Logger.error("CRITICAL: Login timed out (hard limit). Exiting process to force restart.");
+    process.exit(1);
+  }, 45000);
+
   try {
-    await Promise.race([
-      client.login(env.DISCORD_TOKEN),
-      new Promise((_, reject) => setTimeout(() => reject(new Error("Login timed out after 30s")), 30000))
-    ]);
+    Logger.info("Attempting to log in to Discord...");
+    await client.login(env.DISCORD_TOKEN);
+    clearTimeout(loginTimeout);
+    Logger.info("Discord login returned (WebSocket connecting...)");
   } catch (err) {
+    clearTimeout(loginTimeout);
     startupState = "login_failed";
     Logger.error("Discord login failed", err);
     process.exit(1);
